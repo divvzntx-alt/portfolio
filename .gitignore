@@ -1,0 +1,38 @@
+.DS_Store
+**/.DS_Store
+
+# Keep required site media trackable for GitHub/Vercel deploys.
+assets/palace-descent-backup-*.mp4
+assets/palace-descent.mp4
+assets/opening-image.png
+assets/aged-crack-border-wallpaper-damaged.jpg
+assets/palace-descent-first-frame.jpg
+assets/videos/
+assets/*backup*/
+assets/audio/*.wav
+!assets/audio/ui-click.wav
+assets/scene2-frames 2/
+assets/scene4-frames 2/
+assets/scene6-frames 2/
+assets/scene7-frames 2/
+assets/scene8-frames 2/
+assets/scene9-frames 2/
+assets/scene9-frames 3/
+assets/scene12-frames 2/
+assets/scene13-frames 2/
+assets/scene14-frames 2/
+assets/scene15-frames 2/
+assets/scene16-frames 2/
+
+# Keep project case studies and lightweight assets tracked
+!projects/
+!projects/**
+projects/**/.DS_Store
+
+# Editor/system noise
+*.log
+*.tmp
+
+# Local git worktrees
+.worktrees/
+.vercel

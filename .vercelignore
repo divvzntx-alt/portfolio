@@ -1,0 +1,32 @@
+.git
+.worktrees
+.claude
+.netlify
+.DS_Store
+**/.DS_Store
+docs/superpowers
+tests
+*.log
+*.tmp
+CURRENT_STATE.md
+CURRENT-STATE.md
+HANDOFF-*.md
+NEXT-STEPS.md
+intro-scroll-state.mjs
+palace-pre-descent.mp4
+projects/thinktum/*backup*.html
+projects/**/*.pdf
+assets/palace-descent-backup-*.mp4
+assets/*backup*/
+assets/scene2-frames 2/
+assets/scene4-frames 2/
+assets/scene6-frames 2/
+assets/scene7-frames 2/
+assets/scene8-frames 2/
+assets/scene9-frames 2/
+assets/scene9-frames 3/
+assets/scene12-frames 2/
+assets/scene13-frames 2/
+assets/scene14-frames 2/
+assets/scene15-frames 2/
+assets/scene16-frames 2/

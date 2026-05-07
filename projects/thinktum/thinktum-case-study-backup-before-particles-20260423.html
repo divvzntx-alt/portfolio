@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Thinktum / LIZ — Speculative Redesign</title>
+<link href="https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400;0,500;0,700;1,400;1,500&family=Noto+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --black:     #080810;
+  --cream:     #FCFAF6;
+  --cream-alt: #F4EFE6;
+  --pink:      #F99FC9;
+  --plum:      #512A44;
+  --mauve:     #7B516D;
+  --gold:      #FFB81C;
+  --garamond:  'EB Garamond', Georgia, serif;
+  --noto:      'Noto Sans', sans-serif;
+}
+html, body { height: 100%; overflow: hidden; background: var(--black); }
+::-webkit-scrollbar { display: none; }
+* { scrollbar-width: none; }
+.scroller { display: flex; height: 100vh; overflow-x: scroll; overflow-y: hidden; scroll-snap-type: x mandatory; }
+.track { display: flex; height: 100vh; align-items: stretch; }
+
+.panel {
+  width: 100vw; height: 100vh;
+  flex-shrink: 0;
+  position: relative;
+  overflow: hidden;
+  padding: 52px 80px;
+  display: flex;
+  flex-direction: column;
+  scroll-snap-align: start;
+}
+.meta {
+  font-family: var(--noto);
+  font-size: 11px;
+  font-weight: 400;
+  letter-spacing: 0.34em;
+  text-transform: uppercase;
+  opacity: 0.4;
+  color: inherit;
+}
+
+/* P00 HEADER */
+.p00 { background: var(--black); color: var(--cream); justify-content: space-between; }
+.p00-wordmark { font-family: var(--garamond); font-size: clamp(4.5rem,12vw,11rem); font-weight: 500; line-height: 0.84; letter-spacing: -0.04em; color: var(--cream); }
+.p00-wordmark em { color: var(--pink); font-style: italic; }
+.p00-sub { font-family: var(--garamond); font-size: clamp(1.1rem,1.7vw,1.6rem); font-style: italic; color: rgba(252,250,246,0.42); margin-top: 20px; }
+
+/* P01 RESEARCH */
+.p01 { background: var(--plum); color: var(--cream); justify-content: space-between; }
+.p01-num { font-family: var(--garamond); font-size: 80px; font-weight: 500; line-height: 1; opacity: 0.45; }
+.p01-quote { font-family: var(--garamond); font-size: clamp(2rem,4vw,4.2rem); font-style: italic; font-weight: 500; line-height: 0.97; max-width: 820px; margin-top: 36px; }
+.p01-body { font-family: var(--noto); font-size: 15px; line-height: 1.8; opacity: 0.55; max-width: 460px; margin-top: 24px; }
+
+/* P02 WORLD BEFORE */
+.p02 { background: var(--cream); color: var(--black); justify-content: space-between; }
+.p02-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 80px; align-items: center; flex: 1; margin-top: 36px; margin-bottom: 28px; }
+.p02-prose { font-family: var(--garamond); font-size: clamp(1.3rem,1.8vw,1.75rem); line-height: 1.35; opacity: 0.75; }
+.p02-pull { font-family: var(--garamond); font-size: clamp(2rem,3.5vw,3.8rem); font-style: italic; font-weight: 500; line-height: 0.97; color: var(--plum); }
+
+/* P03 REFRAME */
+.p03 { background: var(--black); color: var(--cream); justify-content: center; }
+.p03-big { font-family: var(--garamond); font-size: clamp(2.8rem,7vw,7.2rem); font-weight: 500; line-height: 0.91; letter-spacing: -0.03em; }
+.p03-big em { color: var(--pink); font-style: italic; }
+.p03-small { font-family: var(--noto); font-size: 12px; letter-spacing: 0.3em; text-transform: uppercase; opacity: 0.35; margin-top: 40px; }
+
+/* PARTICLE PANELS */
+.p-particle { background: var(--black); color: var(--cream); padding: 0; }
+.particle-canvas-wrap {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.particle-placeholder {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: 16px;
+  border: 1px dashed rgba(249,159,201,0.2);
+}
+.particle-placeholder-label {
+  font-family: var(--noto);
+  font-size: 11px;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  color: var(--pink);
+  opacity: 0.5;
+}
+.particle-placeholder-ring {
+  width: 200px;
+  height: 200px;
+  border-radius: 50%;
+  border: 1px solid rgba(249,159,201,0.15);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: ringpulse 3s ease-in-out infinite;
+}
+.particle-placeholder-ring::after {
+  content: '';
+  width: 120px;
+  height: 120px;
+  border-radius: 50%;
+  border: 1px solid rgba(249,159,201,0.25);
+  animation: ringpulse 3s ease-in-out infinite reverse;
+}
+@keyframes ringpulse { 0%,100%{opacity:0.3;transform:scale(1)} 50%{opacity:0.8;transform:scale(1.05)} }
+
+.particle-tree-placeholder {
+  width: 2px;
+  height: 180px;
+  background: linear-gradient(to top, var(--pink), transparent);
+  position: relative;
+}
+.particle-tree-placeholder::before,
+.particle-tree-placeholder::after {
+  content: '';
+  position: absolute;
+  width: 80px;
+  height: 1px;
+  background: linear-gradient(to right, var(--pink), transparent);
+  top: 40px;
+}
+.particle-tree-placeholder::before { left: 0; transform: rotate(-40deg); transform-origin: left; }
+.particle-tree-placeholder::after { left: 0; transform: rotate(40deg); transform-origin: left; }
+
+.particle-hand-placeholder {
+  width: 160px;
+  height: 120px;
+  border: 1px solid rgba(249,159,201,0.2);
+  border-radius: 0 60% 60% 0 / 0 40% 40% 0;
+  position: relative;
+  animation: handpulse 2.5s ease-in-out infinite;
+}
+@keyframes handpulse { 0%,100%{opacity:0.3} 50%{opacity:0.7} }
+
+.p-overlay { position: absolute; inset: 0; background: linear-gradient(to top, rgba(8,8,16,0.9) 0%, rgba(8,8,16,0.1) 55%, transparent 100%); pointer-events: none; }
+.p-meta { position: absolute; top: 52px; left: 80px; z-index: 2; }
+.p-text { position: absolute; bottom: 52px; left: 80px; right: 80px; z-index: 2; }
+.p-text-2col { display: grid; grid-template-columns: 1fr 1fr; gap: 60px; align-items: end; }
+.p-heading { font-family: var(--garamond); font-size: clamp(2rem,3.8vw,4rem); font-weight: 500; line-height: 1.0; max-width: 680px; }
+.p-body { font-family: var(--noto); font-size: 15px; line-height: 1.78; opacity: 0.55; max-width: 460px; margin-top: 18px; }
+.p-caption { font-family: var(--noto); font-size: 11px; letter-spacing: 0.26em; text-transform: uppercase; opacity: 0.28; margin-top: 14px; }
+
+/* P — DECISION PANEL */
+.p-decision { background: var(--cream-alt); color: var(--black); justify-content: space-between; }
+.p-decision-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 80px; align-items: start; flex: 1; margin-top: 48px; margin-bottom: 28px; }
+.decision-block { display: flex; flex-direction: column; gap: 14px; }
+.decision-num { font-family: var(--noto); font-size: 11px; letter-spacing: 0.2em; text-transform: uppercase; color: var(--mauve); }
+.decision-title { font-family: var(--garamond); font-size: clamp(1.6rem,2.4vw,2.4rem); font-weight: 500; line-height: 1.1; color: var(--plum); }
+.decision-quote { font-family: var(--garamond); font-size: clamp(1.1rem,1.5vw,1.5rem); font-style: italic; line-height: 1.4; color: rgba(26,10,10,0.6); border-left: 2px solid var(--pink); padding-left: 18px; }
+.decision-body { font-family: var(--noto); font-size: 14px; line-height: 1.75; opacity: 0.6; }
+
+/* P — SYSTEM PANEL */
+.p-system { background: var(--black); color: var(--cream); justify-content: space-between; }
+.p-system-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 80px; align-items: center; flex: 1; margin-top: 36px; margin-bottom: 28px; }
+.system-heading { font-family: var(--garamond); font-size: clamp(2rem,3.6vw,3.8rem); font-weight: 500; line-height: 1.0; }
+.system-body { font-family: var(--noto); font-size: 15px; line-height: 1.78; opacity: 0.55; max-width: 400px; margin-top: 20px; }
+.beats-col { display: flex; flex-direction: column; gap: 18px; }
+.beat-row { display: flex; align-items: baseline; gap: 20px; padding-bottom: 18px; border-bottom: 1px solid rgba(252,250,246,0.07); }
+.beat-row:last-child { border-bottom: none; }
+.beat-num { font-family: var(--noto); font-size: 10px; letter-spacing: 0.2em; text-transform: uppercase; color: var(--pink); opacity: 0.6; flex-shrink: 0; width: 24px; }
+.beat-formation { font-family: var(--garamond); font-size: 15px; font-style: italic; color: var(--pink); flex-shrink: 0; width: 120px; }
+.beat-line { font-family: var(--noto); font-size: 13px; opacity: 0.5; line-height: 1.4; }
+
+/* CLOSING */
+.p-close { background: var(--plum); color: var(--cream); justify-content: space-between; }
+.p-close-num { font-family: var(--garamond); font-size: 80px; font-weight: 500; line-height: 1; opacity: 0.4; }
+.p-close-heading { font-family: var(--garamond); font-size: clamp(2.4rem,4.8vw,5rem); font-weight: 500; line-height: 0.95; max-width: 780px; margin-top: 24px; }
+.p-close-bottom { display: flex; align-items: flex-end; justify-content: space-between; gap: 32px; }
+.p-close-note { font-family: var(--noto); font-size: 13px; line-height: 1.75; opacity: 0.5; max-width: 400px; }
+.p-close-wordmark { font-family: var(--garamond); font-size: clamp(3.2rem,8vw,8rem); font-weight: 500; line-height: 0.82; letter-spacing: -0.05em; opacity: 0.55; text-align: right; }
+.p-close-wordmark em { color: var(--pink); font-style: italic; }
+</style>
+</head>
+<body>
+<div class="scroller" id="scroller">
+<div class="track">
+
+<!-- P00 HEADER -->
+<section class="panel p00">
+  <div style="position:relative;z-index:2;flex:1;display:flex;flex-direction:column;justify-content:space-between;">
+    <div>
+      <div class="p00-wordmark">Thinktum<br>/ <em>LIZ</em></div>
+      <div class="meta" style="margin-top:14px;color:var(--cream);">Speculative Redesign · Brand Strategy · Interaction Design</div>
+      <div class="p00-sub">The way stars tell the story of the universe —<br>particles tell the story of LIZ.</div>
+    </div>
+    <div style="display:flex;justify-content:space-between;align-items:flex-end;">
+      <div class="meta" style="color:var(--cream);opacity:0.28;">2024</div>
+      <div class="meta" style="color:var(--cream);opacity:0.45;">scroll →</div>
+    </div>
+  </div>
+  <!-- subtle gold accent -->
+  <div style="position:absolute;right:0;top:0;width:3px;height:100%;background:linear-gradient(to bottom,transparent,var(--gold),transparent);opacity:0.3;"></div>
+</section>
+
+<!-- P01 RESEARCH -->
+<section class="panel p01">
+  <div class="p01-num">01</div>
+  <div class="p01-quote">Insurance is one of the most complex industries in the world. AI inside insurance is even harder to explain. The website's job was to make the incomprehensible feel inevitable.</div>
+  <p class="p01-body">LIZ is Thinktum's AI-native insurance infrastructure suite — modular, interconnected, built for a future the industry hasn't caught up to yet. The design problem: how do you sell something people don't yet have a mental model for?</p>
+  <div class="meta" style="color:var(--cream);margin-top:auto;padding-top:24px;">Research</div>
+</section>
+
+<!-- P02 WORLD BEFORE -->
+<section class="panel p02">
+  <div class="meta">02</div>
+  <div class="p02-grid">
+    <div class="p02-prose">Every insurtech site looked the same. Abstract shapes. Blue gradients. Stock photos of people shaking hands. They were all trying to look like tech companies — which meant none of them were explaining anything.</div>
+    <div class="p02-pull">"Stop explaining<br>the product.<br>Tell the story<br>of the industry."</div>
+  </div>
+  <div class="meta">The world before</div>
+</section>
+
+<!-- P03 REFRAME -->
+<section class="panel p03">
+  <div style="flex:1;display:flex;flex-direction:column;justify-content:center;">
+    <div class="p03-big">If you want<br>someone to understand<br>complexity —<br><em>give them a story.</em></div>
+    <div class="p03-small">Not a feature list. Not a diagram. A story.</div>
+  </div>
+  <div class="meta" style="color:var(--cream);">03 — The Reframe</div>
+</section>
+
+<!-- P04 PARTICLE: GLOBE — the old world -->
+<section class="panel p-particle">
+  <div class="particle-canvas-wrap">
+    <div class="particle-placeholder">
+      <div class="particle-placeholder-ring"></div>
+      <div class="particle-placeholder-label">[ Particle: Globe — Three.js ]</div>
+    </div>
+  </div>
+  <div class="p-overlay"></div>
+  <div class="p-meta"><div class="meta" style="color:var(--cream);">04 — The old world</div></div>
+  <div class="p-text">
+    <div class="p-text-2col">
+      <div class="p-heading">A dense, closed system.<br>Spinning alone.</div>
+      <p class="p-body">The globe isn't decorative. It's the insurance industry before LIZ — a self-contained world, heavy with legacy, orbiting nothing. 20,000 particles. One formation. The weight of an entire industry in a single shape.</p>
+    </div>
+  </div>
+</section>
+
+<!-- P05 DECISIONS -->
+<section class="panel p-decision">
+  <div class="meta" style="color:var(--plum);">05 — Design decisions</div>
+  <div class="p-decision-grid">
+    <div class="decision-block">
+      <span class="decision-num">Decision 01</span>
+      <div class="decision-title">Why particles, not UI?</div>
+      <div class="decision-quote">"The way stars tell the story of the universe — particles tell the story of LIZ."</div>
+      <p class="decision-body">Every other insurtech site used UI mockups and feature grids to explain a complex product. I went the other direction. Particles don't explain LIZ — they make you feel it. The morphing of shapes over time is the argument. By the time copy appears, you already believe something is happening.</p>
+    </div>
+    <div class="decision-block">
+      <span class="decision-num">Decision 02</span>
+      <div class="decision-title">The hardest decision: the story itself.</div>
+      <div class="decision-quote">"How do you make it connect — and not sound random for the sake of animation?"</div>
+      <p class="decision-body">The story had to earn every beat. Each particle formation needed to mean something before the text arrived to confirm it. The Big Bang metaphor unlocked this — the industry is the old universe, LIZ is a new law of physics. Once that was locked, every scene had a reason to exist.</p>
+    </div>
+  </div>
+  <div class="meta" style="color:var(--plum);">The thinking</div>
+</section>
+
+<!-- P06 PARTICLE: TREE — LIZ emerges -->
+<section class="panel p-particle">
+  <div class="particle-canvas-wrap">
+    <div class="particle-placeholder">
+      <div class="particle-tree-placeholder"></div>
+      <div class="particle-placeholder-label" style="margin-top:24px;">[ Particle: Tree — Three.js ]</div>
+    </div>
+  </div>
+  <div class="p-overlay"></div>
+  <div class="p-meta"><div class="meta" style="color:var(--cream);">06 — Order from chaos</div></div>
+  <div class="p-text">
+    <div class="p-text-2col">
+      <div class="p-heading">Not built.<br>Grown.</div>
+      <p class="p-body">From scattered particles, a trunk forms. Then branches. Then a full canopy, breathing. The tree isn't a metaphor for growth — it's what happens when a system finds its natural shape. Pink structure particles define the scaffold. White world particles fill the space between.</p>
+    </div>
+  </div>
+</section>
+
+<!-- P07 NARRATIVE SYSTEM -->
+<section class="panel p-system">
+  <div class="meta" style="color:var(--cream);">07 — The narrative system</div>
+  <div class="p-system-grid">
+    <div>
+      <div class="system-heading">12 beats.<br>One continuous<br>particle system.</div>
+      <p class="system-body">The Big Bang is the governing metaphor. The insurance industry is the old universe — dense, slow, closed. LIZ is a new law of physics. The experience doesn't explain this. It demonstrates it, beat by beat, until the user arrives at the demo CTA having already lived the argument.</p>
+    </div>
+    <div class="beats-col">
+      <div class="beat-row"><span class="beat-num">01</span><span class="beat-formation">Shift</span><span class="beat-line">The globe. The industry as it is.</span></div>
+      <div class="beat-row"><span class="beat-num">02</span><span class="beat-formation">Momentum</span><span class="beat-line">A wave builds. Something is changing.</span></div>
+      <div class="beat-row"><span class="beat-num">03</span><span class="beat-formation">Convergence</span><span class="beat-line">Smaller spheres. Forces pulling together.</span></div>
+      <div class="beat-row"><span class="beat-num">04</span><span class="beat-formation">Limits</span><span class="beat-line">Continents form. The boundaries of the old world.</span></div>
+      <div class="beat-row"><span class="beat-num">05</span><span class="beat-formation">Pressure</span><span class="beat-line">The storm. The system under maximum strain.</span></div>
+      <div class="beat-row"><span class="beat-num">06</span><span class="beat-formation">Emergence</span><span class="beat-line">Storm continues. Something is breaking through.</span></div>
+      <div class="beat-row"><span class="beat-num">07</span><span class="beat-formation">Formation</span><span class="beat-line">Storm and tree — coexisting. Order finding its shape.</span></div>
+      <div class="beat-row"><span class="beat-num">08</span><span class="beat-formation">Capabilities</span><span class="beat-line">The fully formed tree. LIZ at scale.</span></div>
+      <div class="beat-row"><span class="beat-num">09</span><span class="beat-formation">Precision</span><span class="beat-line">Tree holds. Purple particles arrive — structure within structure.</span></div>
+      <div class="beat-row"><span class="beat-num">10</span><span class="beat-formation">Enter</span><span class="beat-line">Inside the trunk. The tunnel begins. You are now inside LIZ.</span></div>
+      <div class="beat-row"><span class="beat-num">11</span><span class="beat-formation">Industries</span><span class="beat-line">The world LIZ serves, made visible.</span></div>
+      <div class="beat-row"><span class="beat-num">12</span><span class="beat-formation">Connect</span><span class="beat-line">The hand of Adam. Human meets system. The gap closes.</span></div>
+    </div>
+  </div>
+  <div class="meta" style="color:var(--cream);">The story</div>
+</section>
+
+<!-- P08 PARTICLE: ADAM'S HAND — connection -->
+<section class="panel p-particle">
+  <div class="particle-canvas-wrap">
+    <div class="particle-placeholder">
+      <div class="particle-hand-placeholder"></div>
+      <div class="particle-placeholder-label" style="margin-top:24px;">[ Particle: Adam's Hand — Three.js ]</div>
+    </div>
+  </div>
+  <div class="p-overlay"></div>
+  <div class="p-meta"><div class="meta" style="color:var(--cream);">08 — The moment of connection</div></div>
+  <div class="p-text">
+    <div class="p-text-2col">
+      <div class="p-heading">Human meets system.<br>The gap closes.</div>
+      <p class="p-body">Michelangelo's Adam — but the hand reaching isn't God's. It's LIZ. The moment of contact is the moment the industry changes. Particles bridge the impossible distance between legacy infrastructure and what comes next. This is the beat before the demo CTA.</p>
+    </div>
+  </div>
+</section>
+
+<!-- P09 CLOSING -->
+<section class="panel p-close">
+  <div class="p-close-num">09</div>
+  <div class="p-close-heading">The goal was never to impress.<br>It was to make someone feel ready<br>to ask for a demo.</div>
+  <div class="p-close-bottom">
+    <div class="p-close-note">Thinktum no longer exists. What remains is the idea — that the most complex things in the world deserve the most human explanations. This is a speculative redesign. The thinking is real.</div>
+    <div class="p-close-wordmark">Thinktum<br>/ <em>LIZ</em></div>
+  </div>
+</section>
+
+</div>
+</div>
+
+<script>
+  const scroller = document.getElementById('scroller');
+  document.addEventListener('keydown', e => {
+    if (e.key === 'ArrowRight' || e.key === 'ArrowDown')
+      scroller.scrollBy({ left: window.innerWidth, behavior: 'smooth' });
+    if (e.key === 'ArrowLeft' || e.key === 'ArrowUp')
+      scroller.scrollBy({ left: -window.innerWidth, behavior: 'smooth' });
+  });
+</script>
+</body>
+</html>
