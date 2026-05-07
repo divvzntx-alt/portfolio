@@ -2184,6 +2184,7 @@ function beginScrollJourney() {
   let pendingRailReverseClearScene = null;
   const sceneTitleShown = new Set();
   let lastScrollTop = 0;
+  let lastRemoteJourneyTick = 0;
   let railJumpTime = 0;
   const projectSceneState = {
     s4: { shown: false, unlocked: false },
@@ -2460,6 +2461,10 @@ function beginScrollJourney() {
     s16Frame = frameForScrollRange(scrollPos, s16Start, s16Start + s16ScrollRange, 120);
   }
 
+  function resolveSceneFrame(currentFrame, targetFrame) {
+    return isRemoteDelivery ? targetFrame : currentFrame + (targetFrame - currentFrame) * 0.08;
+  }
+
   function warmStreamAtFrame(stream, frame, now = performance.now()) {
     const targetFrame = Math.max(0, Math.round(frame));
     stream.prime(targetFrame);
@@ -2468,6 +2473,20 @@ function beginScrollJourney() {
 
   function masterLoop(now) {
     const scrollTop = journey.scrollTop;
+    const scrollChanged = Math.abs(scrollTop - lastScrollTop) > 0.5;
+
+    if (isRemoteDelivery) {
+      if (!scrollChanged && activeScene) {
+        return;
+      }
+
+      const remoteFrameInterval = isMotionViewport() ? 70 : 50;
+      if (lastRemoteJourneyTick && now - lastRemoteJourneyTick < remoteFrameInterval) {
+        return;
+      }
+      lastRemoteJourneyTick = now;
+    }
+
     const scrollDirection = scrollTop - lastScrollTop;
 
     maybeClearOwnedThresholdTitle(scrollTop, lastScrollTop);
@@ -2512,7 +2531,7 @@ function beginScrollJourney() {
       }
       const progress = Math.min(scrollTop / s2MaxScroll, 1);
       const targetFrame = Math.floor(progress * 120);
-      s2Frame += (targetFrame - s2Frame) * 0.08;
+      s2Frame = resolveSceneFrame(s2Frame, targetFrame);
       s2Stream.setTarget(Math.round(s2Frame), now);
       s2Stream.draw(Math.round(s2Frame));
 
@@ -2565,7 +2584,7 @@ function beginScrollJourney() {
         const scrolled = scrollTop - s3Start;
         const progress = Math.min(scrolled / s3ScrollRange, 1);
         const targetFrame = Math.floor(progress * 288);
-        s3Frame += (targetFrame - s3Frame) * 0.08;
+        s3Frame = resolveSceneFrame(s3Frame, targetFrame);
         s3Stream.setTarget(Math.round(s3Frame), now);
         s3Stream.draw(Math.round(s3Frame));
       }
@@ -2607,7 +2626,7 @@ function beginScrollJourney() {
       const scrolled = scrollTop - s4Start;
       const progress = Math.min(scrolled / s4ScrollRange, 1);
       const targetFrame = Math.floor(progress * 120);
-      s4Frame += (targetFrame - s4Frame) * 0.08;
+      s4Frame = resolveSceneFrame(s4Frame, targetFrame);
       s4Stream.setTarget(Math.round(s4Frame), now);
       s4Stream.draw(Math.round(s4Frame));
     } else if (scrollTop < s6Start) {
@@ -2647,7 +2666,7 @@ function beginScrollJourney() {
       const scrolled = scrollTop - s5Start;
       const progress = Math.min(scrolled / s5ScrollRange, 1);
       const targetFrame = Math.floor(progress * 240);
-      s5Frame += (targetFrame - s5Frame) * 0.08;
+      s5Frame = resolveSceneFrame(s5Frame, targetFrame);
       s5Stream.setTarget(Math.round(s5Frame), now);
       s5Stream.draw(Math.round(s5Frame));
     } else if (scrollTop < s7Start) {
@@ -2687,7 +2706,7 @@ function beginScrollJourney() {
       const scrolled = scrollTop - s6Start;
       const progress = Math.min(scrolled / s6ScrollRange, 1);
       const targetFrame = Math.floor(progress * 240);
-      s6Frame += (targetFrame - s6Frame) * 0.08;
+      s6Frame = resolveSceneFrame(s6Frame, targetFrame);
       s6Stream.setTarget(Math.round(s6Frame), now);
       s6Stream.draw(Math.round(s6Frame));
     } else if (scrollTop < s8Start) {
@@ -2727,7 +2746,7 @@ function beginScrollJourney() {
       const scrolled = scrollTop - s7Start;
       const progress = Math.min(scrolled / s7ScrollRange, 1);
       const targetFrame = Math.floor(progress * 120);
-      s7Frame += (targetFrame - s7Frame) * 0.08;
+      s7Frame = resolveSceneFrame(s7Frame, targetFrame);
       s7Stream.setTarget(Math.round(s7Frame), now);
       s7Stream.draw(Math.round(s7Frame));
     } else if (scrollTop < s9Start) {
@@ -2767,7 +2786,7 @@ function beginScrollJourney() {
       const scrolled = scrollTop - s8Start;
       const progress = Math.min(scrolled / s8ScrollRange, 1);
       const targetFrame = Math.floor(progress * 240);
-      s8Frame += (targetFrame - s8Frame) * 0.08;
+      s8Frame = resolveSceneFrame(s8Frame, targetFrame);
       s8Stream.setTarget(Math.round(s8Frame), now);
       s8Stream.draw(Math.round(s8Frame));
     } else if (scrollTop < s10Start) {
@@ -2807,7 +2826,7 @@ function beginScrollJourney() {
       const scrolled = scrollTop - s9Start;
       const progress = Math.min(scrolled / s9ScrollRange, 1);
       const targetFrame = Math.floor(progress * 240);
-      s9Frame += (targetFrame - s9Frame) * 0.08;
+      s9Frame = resolveSceneFrame(s9Frame, targetFrame);
       s9Stream.setTarget(Math.round(s9Frame), now);
       s9Stream.draw(Math.round(s9Frame));
     } else if (scrollTop < s11Start) {
@@ -2847,7 +2866,7 @@ function beginScrollJourney() {
       const scrolled = scrollTop - s10Start;
       const progress = Math.min(scrolled / s10ScrollRange, 1);
       const targetFrame = Math.floor(progress * 240);
-      s10Frame += (targetFrame - s10Frame) * 0.08;
+      s10Frame = resolveSceneFrame(s10Frame, targetFrame);
       s10Stream.setTarget(Math.round(s10Frame), now);
       s10Stream.draw(Math.round(s10Frame));
     } else if (scrollTop < s12Start) {
@@ -2887,7 +2906,7 @@ function beginScrollJourney() {
       const scrolled = scrollTop - s11Start;
       const progress = Math.min(scrolled / s11ScrollRange, 1);
       const targetFrame = Math.floor(progress * 240);
-      s11Frame += (targetFrame - s11Frame) * 0.08;
+      s11Frame = resolveSceneFrame(s11Frame, targetFrame);
       s11Stream.setTarget(Math.round(s11Frame), now);
       s11Stream.draw(Math.round(s11Frame));
     } else if (scrollTop < s13Start) {
@@ -2927,7 +2946,7 @@ function beginScrollJourney() {
       const scrolled = scrollTop - s12Start;
       const progress = Math.min(scrolled / s12ScrollRange, 1);
       const targetFrame = Math.floor(progress * 240);
-      s12Frame += (targetFrame - s12Frame) * 0.08;
+      s12Frame = resolveSceneFrame(s12Frame, targetFrame);
       s12Stream.setTarget(Math.round(s12Frame), now);
       s12Stream.draw(Math.round(s12Frame));
     } else if (scrollTop < s14Start) {
@@ -2967,7 +2986,7 @@ function beginScrollJourney() {
       const scrolled = scrollTop - s13Start;
       const progress = Math.min(scrolled / s13ScrollRange, 1);
       const targetFrame = Math.floor(progress * 240);
-      s13Frame += (targetFrame - s13Frame) * 0.08;
+      s13Frame = resolveSceneFrame(s13Frame, targetFrame);
       s13Stream.setTarget(Math.round(s13Frame), now);
       s13Stream.draw(Math.round(s13Frame));
     } else if (scrollTop < s15Start) {
@@ -3007,7 +3026,7 @@ function beginScrollJourney() {
       const scrolled = scrollTop - s14Start;
       const progress = Math.min(scrolled / s14ScrollRange, 1);
       const targetFrame = Math.floor(progress * 168);
-      s14Frame += (targetFrame - s14Frame) * 0.08;
+      s14Frame = resolveSceneFrame(s14Frame, targetFrame);
       s14Stream.setTarget(Math.round(s14Frame), now);
       s14Stream.draw(Math.round(s14Frame));
     } else if (scrollTop < s16Start) {
@@ -3047,7 +3066,7 @@ function beginScrollJourney() {
       const scrolled = scrollTop - s15Start;
       const progress = Math.min(scrolled / s15ScrollRange, 1);
       const targetFrame = Math.floor(progress * 288);
-      s15Frame += (targetFrame - s15Frame) * 0.08;
+      s15Frame = resolveSceneFrame(s15Frame, targetFrame);
       s15Stream.setTarget(Math.round(s15Frame), now);
       s15Stream.draw(Math.round(s15Frame));
     } else {
@@ -3086,7 +3105,7 @@ function beginScrollJourney() {
       const scrolled = scrollTop - s16Start;
       const progress = Math.min(scrolled / s16ScrollRange, 1);
       const targetFrame = Math.floor(progress * 120);
-      s16Frame += (targetFrame - s16Frame) * 0.08;
+      s16Frame = resolveSceneFrame(s16Frame, targetFrame);
       s16Stream.setTarget(Math.round(s16Frame), now);
       s16Stream.draw(Math.round(s16Frame));
     }
