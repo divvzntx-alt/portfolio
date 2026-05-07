@@ -99,6 +99,8 @@ let soundWaveStart = 0;
 let soundStartRetryTimers = [];
 const soundWavePaths = Array.from(document.querySelectorAll(".sound-wave__motion"));
 const sceneFrameStreams = [];
+const isRemoteDelivery = window.location.protocol.startsWith("http") &&
+  !["localhost", "127.0.0.1"].includes(window.location.hostname);
 
 if (siteMusic) {
   siteMusic.volume = 0;
@@ -1454,11 +1456,19 @@ function createSceneFrameStream({ basePath, totalFrames, canvas, sceneKey = "" }
   let desiredIndex = 0;
   let lastQueueRun = 0;
   let paused = document.visibilityState === "hidden";
-  const maxBehind = sceneKey === "intro" ? 12 : 18;
-  const maxAhead = sceneKey === "intro" ? 24 : 36;
-  const nearbyRadius = sceneKey === "intro" ? 4 : 5;
-  const maxConcurrency = 3;
-  const throttleMs = 64;
+  const remoteStep = viewportMode === "mobile" ? 6 : viewportMode === "tablet" ? 5 : 4;
+  const frameStep = isRemoteDelivery ? (sceneKey === "intro" ? 3 : remoteStep) : 1;
+  const maxBehind = isRemoteDelivery ? frameStep * 2 : sceneKey === "intro" ? 12 : 18;
+  const maxAhead = isRemoteDelivery ? frameStep * 3 : sceneKey === "intro" ? 24 : 36;
+  const nearbyRadius = isRemoteDelivery ? frameStep : sceneKey === "intro" ? 4 : 5;
+  const maxConcurrency = isRemoteDelivery ? 1 : 3;
+  const throttleMs = isRemoteDelivery ? 140 : 64;
+
+  function normalizeFrameIndex(index) {
+    const clamped = Math.max(0, Math.min(totalFrames - 1, Math.round(index)));
+    if (frameStep <= 1) return clamped;
+    return Math.max(0, Math.min(totalFrames - 1, Math.round(clamped / frameStep) * frameStep));
+  }
 
   function drawCoverImage(img) {
     const canvasWidth = canvas.width;
@@ -1488,26 +1498,28 @@ function createSceneFrameStream({ basePath, totalFrames, canvas, sceneKey = "" }
   }
 
   function loadFrame(index) {
-    if (index < 0 || index >= totalFrames || cache.has(index) || loading.has(index) || paused) {
+    const frameIndex = normalizeFrameIndex(index);
+    if (frameIndex < 0 || frameIndex >= totalFrames || cache.has(frameIndex) || loading.has(frameIndex) || paused) {
       return;
     }
 
     const img = new Image();
-    loading.set(index, img);
+    img.decoding = "async";
+    loading.set(frameIndex, img);
 
     const cleanup = () => {
-      loading.delete(index);
+      loading.delete(frameIndex);
     };
 
     img.onload = () => {
       cleanup();
       if (img.naturalWidth > 0) {
-        cache.set(index, img);
+        cache.set(frameIndex, img);
       }
     };
 
     img.onerror = cleanup;
-    img.src = frameSrc(index);
+    img.src = frameSrc(frameIndex);
   }
 
   function buildPriorityList(center) {
@@ -1515,20 +1527,21 @@ function createSceneFrameStream({ basePath, totalFrames, canvas, sceneKey = "" }
     const seen = new Set();
 
     const push = (index) => {
-      if (index < 0 || index >= totalFrames || seen.has(index)) return;
-      seen.add(index);
-      prioritized.push(index);
+      const frameIndex = normalizeFrameIndex(index);
+      if (frameIndex < 0 || frameIndex >= totalFrames || seen.has(frameIndex)) return;
+      seen.add(frameIndex);
+      prioritized.push(frameIndex);
     };
 
     push(center);
-    for (let offset = 1; offset <= nearbyRadius; offset += 1) {
+    for (let offset = frameStep; offset <= nearbyRadius; offset += frameStep) {
       push(center - offset);
       push(center + offset);
     }
-    for (let offset = nearbyRadius + 1; offset <= maxAhead; offset += 1) {
+    for (let offset = nearbyRadius + frameStep; offset <= maxAhead; offset += frameStep) {
       push(center + offset);
     }
-    for (let offset = nearbyRadius + 1; offset <= maxBehind; offset += 1) {
+    for (let offset = nearbyRadius + frameStep; offset <= maxBehind; offset += frameStep) {
       push(center - offset);
     }
 
@@ -1536,7 +1549,7 @@ function createSceneFrameStream({ basePath, totalFrames, canvas, sceneKey = "" }
   }
 
   function syncCacheWindow(center) {
-    desiredIndex = Math.max(0, Math.min(totalFrames - 1, center));
+    desiredIndex = normalizeFrameIndex(center);
     const keepMin = Math.max(0, desiredIndex - maxBehind);
     const keepMax = Math.min(totalFrames - 1, desiredIndex + maxAhead);
 
@@ -1548,7 +1561,7 @@ function createSceneFrameStream({ basePath, totalFrames, canvas, sceneKey = "" }
   }
 
   function processQueue(now = performance.now()) {
-    if (paused || now - lastQueueRun < throttleMs) {
+    if (paused || now - lastQueueRun < throttleMs || (!isVisible() && cache.size > 0)) {
       return;
     }
     lastQueueRun = now;
@@ -1563,11 +1576,17 @@ function createSceneFrameStream({ basePath, totalFrames, canvas, sceneKey = "" }
   }
 
   function draw(index) {
-    const clampedIndex = Math.max(0, Math.min(totalFrames - 1, index));
+    const clampedIndex = normalizeFrameIndex(index);
     const img = cache.get(clampedIndex);
     if (img && img.complete && img.naturalWidth > 0) {
       drawCoverImage(img);
       lastDrawnIndex = clampedIndex;
+      return;
+    }
+
+    const fallback = cache.get(lastDrawnIndex);
+    if (fallback && fallback.complete && fallback.naturalWidth > 0) {
+      drawCoverImage(fallback);
     }
   }
 
@@ -1577,12 +1596,13 @@ function createSceneFrameStream({ basePath, totalFrames, canvas, sceneKey = "" }
   }
 
   function clear(keepIndex = null) {
-    const keep = keepIndex === null ? null : cache.get(keepIndex);
+    const normalizedKeepIndex = keepIndex === null ? null : normalizeFrameIndex(keepIndex);
+    const keep = normalizedKeepIndex === null ? null : cache.get(normalizedKeepIndex);
     cache.clear();
     loading.clear();
     if (keep) {
-      cache.set(keepIndex, keep);
-      lastDrawnIndex = keepIndex;
+      cache.set(normalizedKeepIndex, keep);
+      lastDrawnIndex = normalizedKeepIndex;
     }
   }
 
@@ -1606,8 +1626,8 @@ function createSceneFrameStream({ basePath, totalFrames, canvas, sceneKey = "" }
   }
 
   function prime(index = 0) {
-    desiredIndex = index;
-    loadFrame(index);
+    desiredIndex = normalizeFrameIndex(index);
+    loadFrame(desiredIndex);
   }
 
   document.addEventListener("visibilitychange", () => {
