@@ -1441,6 +1441,10 @@ function startExperience() {
 
   const VEIL_DONE = TEXT_DONE;
   later(VEIL_DONE + 3000, () => {
+    prepareIntroScrollMode();
+  });
+
+  later(VEIL_DONE + 5500, () => {
     activateIntroScrollMode();
   });
 
@@ -1759,6 +1763,16 @@ function ensureIntroStream() {
     sceneKey: "intro",
   });
   return introStream;
+}
+
+function prepareIntroScrollMode() {
+  document.body.classList.add("is-video-surfacing");
+  const stream = ensureIntroStream();
+  if (stream) {
+    stream.preloadRange(0, 96);
+    stream.setTarget(0, performance.now());
+    stream.draw(0);
+  }
 }
 
 function setIntroScrollPromptVisible(visible) {
