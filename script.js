@@ -2391,6 +2391,7 @@ function beginScrollJourney() {
     { sceneKey: "s8", start: s8Start },
     { sceneKey: "s10", start: s10Start },
     { sceneKey: "s13", start: s13Start },
+    { sceneKey: "s15", start: s15Start },
   ];
   function thresholdStartForScene(sceneKey) {
     return locationThresholdSeams.find((seam) => seam.sceneKey === sceneKey)?.start ?? null;
