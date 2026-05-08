@@ -1710,7 +1710,7 @@ function ensureIntroStream() {
   if (introStream) return introStream;
   resizeIntroCanvas();
   introStream = createSceneFrameStream({
-    basePath: "./assets/palace-intro-frames-1280",
+    basePath: "./assets/palace-intro-frames",
     totalFrames: introTotalFrames,
     canvas: introSceneCanvas,
     sceneKey: "intro",
@@ -1999,13 +1999,13 @@ function beginScrollJourney() {
   s16Canvas.style.opacity = "0";
 
   const s2Stream = createSceneFrameStream({
-    basePath: "./assets/scene2-frames",
+    basePath: "./assets/scene2-frames-1600",
     totalFrames: 121,
     canvas: s2Canvas,
     sceneKey: "s2",
   });
   const s3Stream = createSceneFrameStream({
-    basePath: "./assets/scene3-frames",
+    basePath: "./assets/scene3-frames-1600",
     totalFrames: 289,
     canvas: s3Canvas,
     sceneKey: "s3",
