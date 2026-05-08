@@ -2513,11 +2513,11 @@ function beginScrollJourney() {
     stream.setTarget(targetFrame, now);
   }
 
-  function warmStreamOnApproach(scrollTop, start, getStream, now) {
-    if (scrollTop <= start - 800) return;
+  function warmStreamOnApproach(scrollTop, start, getStream, now, distance = 800, frameCount = 30) {
+    if (scrollTop <= start - distance) return;
     const stream = getStream();
     if (!stream || stream._warmed) return;
-    stream.preloadRange(0, 30);
+    stream.preloadRange(0, frameCount);
     stream.setTarget(0, now);
     stream._warmed = true;
   }
@@ -2535,8 +2535,8 @@ function beginScrollJourney() {
     warmStreamOnApproach(scrollTop, s12Start, () => ensureS12Stream(), now);
     warmStreamOnApproach(scrollTop, s13Start, () => ensureS13Stream(), now);
     warmStreamOnApproach(scrollTop, s14Start, () => ensureS14Stream(), now);
-    warmStreamOnApproach(scrollTop, s15Start, () => ensureS15Stream(), now);
-    warmStreamOnApproach(scrollTop, s16Start, () => ensureS16Stream(), now);
+    warmStreamOnApproach(scrollTop, s15Start, () => ensureS15Stream(), now, 1600, 60);
+    warmStreamOnApproach(scrollTop, s16Start, () => ensureS16Stream(), now, 1800, 60);
   }
 
   function masterLoop(now) {
@@ -3087,7 +3087,7 @@ function beginScrollJourney() {
     } else if (scrollTop < s16Start) {
       if (activeScene !== "s15") {
         activeScene = "s15";
-        ensureS16Stream().prime(0);
+        ensureS16Stream().preloadRange(0, 60);
         s2Canvas.style.opacity = "0";
         s3Canvas.style.opacity = "0";
         s4Canvas.style.opacity = "0";
