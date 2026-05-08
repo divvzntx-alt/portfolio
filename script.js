@@ -1468,11 +1468,11 @@ function createSceneFrameStream({ basePath, totalFrames, canvas, sceneKey = "" }
   let lastQueueRun = 0;
   let paused = document.visibilityState === "hidden";
   const resolvedBasePath = resolveFrameBasePath(basePath);
-  const maxBehind = sceneKey === "intro" ? 12 : 18;
-  const maxAhead = sceneKey === "intro" ? 24 : 36;
-  const nearbyRadius = sceneKey === "intro" ? 4 : 5;
-  const maxConcurrency = 3;
-  const throttleMs = 64;
+  const maxBehind = sceneKey === "intro" ? 8 : 12;
+  const maxAhead = sceneKey === "intro" ? 40 : 60;
+  const nearbyRadius = sceneKey === "intro" ? 6 : 8;
+  const maxConcurrency = 8;
+  const throttleMs = 16;
 
   function drawCoverImage(img) {
     const canvasWidth = canvas.width;
@@ -1632,6 +1632,14 @@ function createSceneFrameStream({ basePath, totalFrames, canvas, sceneKey = "" }
     loadFrame(desiredIndex);
   }
 
+  function preloadRange(startIndex, count) {
+    const start = Math.max(0, Math.min(totalFrames - 1, Math.round(startIndex)));
+    const end = Math.min(start + count, totalFrames);
+    for (let index = start; index < end; index += 1) {
+      loadFrame(index);
+    }
+  }
+
   document.addEventListener("visibilitychange", () => {
     paused = document.visibilityState === "hidden";
     if (!paused) {
@@ -1644,6 +1652,7 @@ function createSceneFrameStream({ basePath, totalFrames, canvas, sceneKey = "" }
     clear,
     draw,
     prime,
+    preloadRange,
     processQueue,
     redraw,
     resizeToViewport,
@@ -2468,10 +2477,37 @@ function beginScrollJourney() {
     stream.setTarget(targetFrame, now);
   }
 
+  function warmStreamOnApproach(scrollTop, start, getStream, now) {
+    if (scrollTop <= start - 800) return;
+    const stream = getStream();
+    if (!stream || stream._warmed) return;
+    stream.preloadRange(0, 30);
+    stream.setTarget(0, now);
+    stream._warmed = true;
+  }
+
+  function warmUpcomingScenes(scrollTop, now) {
+    warmStreamOnApproach(scrollTop, s3Start, () => s3Stream, now);
+    warmStreamOnApproach(scrollTop, s4Start, () => ensureS4Stream(), now);
+    warmStreamOnApproach(scrollTop, s5Start, () => ensureS5Stream(), now);
+    warmStreamOnApproach(scrollTop, s6Start, () => ensureS6Stream(), now);
+    warmStreamOnApproach(scrollTop, s7Start, () => ensureS7Stream(), now);
+    warmStreamOnApproach(scrollTop, s8Start, () => ensureS8Stream(), now);
+    warmStreamOnApproach(scrollTop, s9Start, () => ensureS9Stream(), now);
+    warmStreamOnApproach(scrollTop, s10Start, () => ensureS10Stream(), now);
+    warmStreamOnApproach(scrollTop, s11Start, () => ensureS11Stream(), now);
+    warmStreamOnApproach(scrollTop, s12Start, () => ensureS12Stream(), now);
+    warmStreamOnApproach(scrollTop, s13Start, () => ensureS13Stream(), now);
+    warmStreamOnApproach(scrollTop, s14Start, () => ensureS14Stream(), now);
+    warmStreamOnApproach(scrollTop, s15Start, () => ensureS15Stream(), now);
+    warmStreamOnApproach(scrollTop, s16Start, () => ensureS16Stream(), now);
+  }
+
   function masterLoop(now) {
     const scrollTop = journey.scrollTop;
     const scrollDirection = scrollTop - lastScrollTop;
 
+    warmUpcomingScenes(scrollTop, now);
     maybeClearOwnedThresholdTitle(scrollTop, lastScrollTop);
     maybeRunLocationThresholdAtSeam(scrollTop, lastScrollTop);
     maybeRunProjectThresholdAtSeam(scrollTop, lastScrollTop);
