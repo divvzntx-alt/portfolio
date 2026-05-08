@@ -3464,7 +3464,6 @@ function showWorldOverlay(onDismiss, options = {}) {
     dismissed = true;
     if (journey) {
       if (guardedDismissOnScroll) {
-        journey.removeEventListener("scroll", guardedDismissOnScroll);
         journey.removeEventListener("wheel", guardedDismissOnScroll);
         journey.removeEventListener("touchmove", guardedDismissOnScroll);
       }
@@ -3493,7 +3492,6 @@ function showWorldOverlay(onDismiss, options = {}) {
   };
 
   if (journey) {
-    journey.addEventListener("scroll", guardedDismissOnScroll);
     journey.addEventListener("wheel", guardedDismissOnScroll);
     journey.addEventListener("touchmove", guardedDismissOnScroll);
   }
