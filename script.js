@@ -2105,7 +2105,7 @@ function beginScrollJourney() {
 
   function ensureS4Stream() {
     if (!s4Initialized) {
-      s4Stream = createSceneFrameStream({ basePath: "./assets/scene4-frames", totalFrames: 121, canvas: s4Canvas, sceneKey: "s4" });
+      s4Stream = createSceneFrameStream({ basePath: "./assets/scene4-frames-1600", totalFrames: 121, canvas: s4Canvas, sceneKey: "s4" });
       s4Initialized = true;
     }
     return s4Stream;
@@ -2145,7 +2145,7 @@ function beginScrollJourney() {
 
   function ensureS9Stream() {
     if (!s9Initialized) {
-      s9Stream = createSceneFrameStream({ basePath: "./assets/scene9-frames", totalFrames: 241, canvas: s9Canvas, sceneKey: "s9" });
+      s9Stream = createSceneFrameStream({ basePath: "./assets/scene9-frames-1600", totalFrames: 241, canvas: s9Canvas, sceneKey: "s9" });
       s9Initialized = true;
     }
     return s9Stream;
@@ -2185,7 +2185,7 @@ function beginScrollJourney() {
 
   function ensureS14Stream() {
     if (!s14Initialized) {
-      s14Stream = createSceneFrameStream({ basePath: "./assets/scene14-frames", totalFrames: 169, canvas: s14Canvas, sceneKey: "s14" });
+      s14Stream = createSceneFrameStream({ basePath: "./assets/scene14-frames-1600", totalFrames: 169, canvas: s14Canvas, sceneKey: "s14" });
       s14Initialized = true;
     }
     return s14Stream;
