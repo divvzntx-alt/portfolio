@@ -99,8 +99,19 @@ let soundWaveStart = 0;
 let soundStartRetryTimers = [];
 const soundWavePaths = Array.from(document.querySelectorAll(".sound-wave__motion"));
 const sceneFrameStreams = [];
-const isRemoteDelivery = window.location.protocol.startsWith("http") &&
-  !["localhost", "127.0.0.1"].includes(window.location.hostname);
+const FRAME_BASE_URL = typeof window.FRAME_BASE_URL === "string" ? window.FRAME_BASE_URL.trim() : "";
+
+function normalizeFrameBaseUrl(url) {
+  if (!url) return "";
+  return url.endsWith("/") ? url : `${url}/`;
+}
+
+function resolveFrameBasePath(localBasePath) {
+  const remoteBaseUrl = normalizeFrameBaseUrl(FRAME_BASE_URL);
+  if (!remoteBaseUrl) return localBasePath;
+  const frameFolder = localBasePath.replace(/^\.?\/?assets\//, "");
+  return `${remoteBaseUrl}${frameFolder}`;
+}
 
 if (siteMusic) {
   siteMusic.volume = 0;
@@ -1456,19 +1467,12 @@ function createSceneFrameStream({ basePath, totalFrames, canvas, sceneKey = "" }
   let desiredIndex = 0;
   let lastQueueRun = 0;
   let paused = document.visibilityState === "hidden";
-  const remoteStep = viewportMode === "mobile" ? 6 : viewportMode === "tablet" ? 5 : 4;
-  const frameStep = isRemoteDelivery ? (sceneKey === "intro" ? 3 : remoteStep) : 1;
-  const maxBehind = isRemoteDelivery ? frameStep * 2 : sceneKey === "intro" ? 12 : 18;
-  const maxAhead = isRemoteDelivery ? frameStep * 3 : sceneKey === "intro" ? 24 : 36;
-  const nearbyRadius = isRemoteDelivery ? frameStep : sceneKey === "intro" ? 4 : 5;
-  const maxConcurrency = isRemoteDelivery ? 1 : 3;
-  const throttleMs = isRemoteDelivery ? 140 : 64;
-
-  function normalizeFrameIndex(index) {
-    const clamped = Math.max(0, Math.min(totalFrames - 1, Math.round(index)));
-    if (frameStep <= 1) return clamped;
-    return Math.max(0, Math.min(totalFrames - 1, Math.round(clamped / frameStep) * frameStep));
-  }
+  const resolvedBasePath = resolveFrameBasePath(basePath);
+  const maxBehind = sceneKey === "intro" ? 12 : 18;
+  const maxAhead = sceneKey === "intro" ? 24 : 36;
+  const nearbyRadius = sceneKey === "intro" ? 4 : 5;
+  const maxConcurrency = 3;
+  const throttleMs = 64;
 
   function drawCoverImage(img) {
     const canvasWidth = canvas.width;
@@ -1494,32 +1498,31 @@ function createSceneFrameStream({ basePath, totalFrames, canvas, sceneKey = "" }
   }
 
   function frameSrc(index) {
-    return `${basePath}/frame${String(index + 1).padStart(4, "0")}.jpg`;
+    return `${resolvedBasePath}/frame${String(index + 1).padStart(4, "0")}.jpg`;
   }
 
   function loadFrame(index) {
-    const frameIndex = normalizeFrameIndex(index);
-    if (frameIndex < 0 || frameIndex >= totalFrames || cache.has(frameIndex) || loading.has(frameIndex) || paused) {
+    if (index < 0 || index >= totalFrames || cache.has(index) || loading.has(index) || paused) {
       return;
     }
 
     const img = new Image();
     img.decoding = "async";
-    loading.set(frameIndex, img);
+    loading.set(index, img);
 
     const cleanup = () => {
-      loading.delete(frameIndex);
+      loading.delete(index);
     };
 
     img.onload = () => {
       cleanup();
       if (img.naturalWidth > 0) {
-        cache.set(frameIndex, img);
+        cache.set(index, img);
       }
     };
 
     img.onerror = cleanup;
-    img.src = frameSrc(frameIndex);
+    img.src = frameSrc(index);
   }
 
   function buildPriorityList(center) {
@@ -1527,21 +1530,20 @@ function createSceneFrameStream({ basePath, totalFrames, canvas, sceneKey = "" }
     const seen = new Set();
 
     const push = (index) => {
-      const frameIndex = normalizeFrameIndex(index);
-      if (frameIndex < 0 || frameIndex >= totalFrames || seen.has(frameIndex)) return;
-      seen.add(frameIndex);
-      prioritized.push(frameIndex);
+      if (index < 0 || index >= totalFrames || seen.has(index)) return;
+      seen.add(index);
+      prioritized.push(index);
     };
 
     push(center);
-    for (let offset = frameStep; offset <= nearbyRadius; offset += frameStep) {
+    for (let offset = 1; offset <= nearbyRadius; offset += 1) {
       push(center - offset);
       push(center + offset);
     }
-    for (let offset = nearbyRadius + frameStep; offset <= maxAhead; offset += frameStep) {
+    for (let offset = nearbyRadius + 1; offset <= maxAhead; offset += 1) {
       push(center + offset);
     }
-    for (let offset = nearbyRadius + frameStep; offset <= maxBehind; offset += frameStep) {
+    for (let offset = nearbyRadius + 1; offset <= maxBehind; offset += 1) {
       push(center - offset);
     }
 
@@ -1549,7 +1551,7 @@ function createSceneFrameStream({ basePath, totalFrames, canvas, sceneKey = "" }
   }
 
   function syncCacheWindow(center) {
-    desiredIndex = normalizeFrameIndex(center);
+    desiredIndex = Math.max(0, Math.min(totalFrames - 1, Math.round(center)));
     const keepMin = Math.max(0, desiredIndex - maxBehind);
     const keepMax = Math.min(totalFrames - 1, desiredIndex + maxAhead);
 
@@ -1576,7 +1578,7 @@ function createSceneFrameStream({ basePath, totalFrames, canvas, sceneKey = "" }
   }
 
   function draw(index) {
-    const clampedIndex = normalizeFrameIndex(index);
+    const clampedIndex = Math.max(0, Math.min(totalFrames - 1, Math.round(index)));
     const img = cache.get(clampedIndex);
     if (img && img.complete && img.naturalWidth > 0) {
       drawCoverImage(img);
@@ -1596,7 +1598,7 @@ function createSceneFrameStream({ basePath, totalFrames, canvas, sceneKey = "" }
   }
 
   function clear(keepIndex = null) {
-    const normalizedKeepIndex = keepIndex === null ? null : normalizeFrameIndex(keepIndex);
+    const normalizedKeepIndex = keepIndex === null ? null : Math.max(0, Math.min(totalFrames - 1, Math.round(keepIndex)));
     const keep = normalizedKeepIndex === null ? null : cache.get(normalizedKeepIndex);
     cache.clear();
     loading.clear();
@@ -1626,7 +1628,7 @@ function createSceneFrameStream({ basePath, totalFrames, canvas, sceneKey = "" }
   }
 
   function prime(index = 0) {
-    desiredIndex = normalizeFrameIndex(index);
+    desiredIndex = Math.max(0, Math.min(totalFrames - 1, Math.round(index)));
     loadFrame(desiredIndex);
   }
 
@@ -2184,7 +2186,6 @@ function beginScrollJourney() {
   let pendingRailReverseClearScene = null;
   const sceneTitleShown = new Set();
   let lastScrollTop = 0;
-  let lastRemoteJourneyTick = 0;
   let railJumpTime = 0;
   const projectSceneState = {
     s4: { shown: false, unlocked: false },
@@ -2461,10 +2462,6 @@ function beginScrollJourney() {
     s16Frame = frameForScrollRange(scrollPos, s16Start, s16Start + s16ScrollRange, 120);
   }
 
-  function resolveSceneFrame(currentFrame, targetFrame) {
-    return isRemoteDelivery ? targetFrame : currentFrame + (targetFrame - currentFrame) * 0.08;
-  }
-
   function warmStreamAtFrame(stream, frame, now = performance.now()) {
     const targetFrame = Math.max(0, Math.round(frame));
     stream.prime(targetFrame);
@@ -2473,20 +2470,6 @@ function beginScrollJourney() {
 
   function masterLoop(now) {
     const scrollTop = journey.scrollTop;
-    const scrollChanged = Math.abs(scrollTop - lastScrollTop) > 0.5;
-
-    if (isRemoteDelivery) {
-      if (!scrollChanged && activeScene) {
-        return;
-      }
-
-      const remoteFrameInterval = isMotionViewport() ? 70 : 50;
-      if (lastRemoteJourneyTick && now - lastRemoteJourneyTick < remoteFrameInterval) {
-        return;
-      }
-      lastRemoteJourneyTick = now;
-    }
-
     const scrollDirection = scrollTop - lastScrollTop;
 
     maybeClearOwnedThresholdTitle(scrollTop, lastScrollTop);
@@ -2531,7 +2514,7 @@ function beginScrollJourney() {
       }
       const progress = Math.min(scrollTop / s2MaxScroll, 1);
       const targetFrame = Math.floor(progress * 120);
-      s2Frame = resolveSceneFrame(s2Frame, targetFrame);
+      s2Frame += (targetFrame - s2Frame) * 0.08;
       s2Stream.setTarget(Math.round(s2Frame), now);
       s2Stream.draw(Math.round(s2Frame));
 
@@ -2584,7 +2567,7 @@ function beginScrollJourney() {
         const scrolled = scrollTop - s3Start;
         const progress = Math.min(scrolled / s3ScrollRange, 1);
         const targetFrame = Math.floor(progress * 288);
-        s3Frame = resolveSceneFrame(s3Frame, targetFrame);
+        s3Frame += (targetFrame - s3Frame) * 0.08;
         s3Stream.setTarget(Math.round(s3Frame), now);
         s3Stream.draw(Math.round(s3Frame));
       }
@@ -2626,7 +2609,7 @@ function beginScrollJourney() {
       const scrolled = scrollTop - s4Start;
       const progress = Math.min(scrolled / s4ScrollRange, 1);
       const targetFrame = Math.floor(progress * 120);
-      s4Frame = resolveSceneFrame(s4Frame, targetFrame);
+      s4Frame += (targetFrame - s4Frame) * 0.08;
       s4Stream.setTarget(Math.round(s4Frame), now);
       s4Stream.draw(Math.round(s4Frame));
     } else if (scrollTop < s6Start) {
@@ -2666,7 +2649,7 @@ function beginScrollJourney() {
       const scrolled = scrollTop - s5Start;
       const progress = Math.min(scrolled / s5ScrollRange, 1);
       const targetFrame = Math.floor(progress * 240);
-      s5Frame = resolveSceneFrame(s5Frame, targetFrame);
+      s5Frame += (targetFrame - s5Frame) * 0.08;
       s5Stream.setTarget(Math.round(s5Frame), now);
       s5Stream.draw(Math.round(s5Frame));
     } else if (scrollTop < s7Start) {
@@ -2706,7 +2689,7 @@ function beginScrollJourney() {
       const scrolled = scrollTop - s6Start;
       const progress = Math.min(scrolled / s6ScrollRange, 1);
       const targetFrame = Math.floor(progress * 240);
-      s6Frame = resolveSceneFrame(s6Frame, targetFrame);
+      s6Frame += (targetFrame - s6Frame) * 0.08;
       s6Stream.setTarget(Math.round(s6Frame), now);
       s6Stream.draw(Math.round(s6Frame));
     } else if (scrollTop < s8Start) {
@@ -2746,7 +2729,7 @@ function beginScrollJourney() {
       const scrolled = scrollTop - s7Start;
       const progress = Math.min(scrolled / s7ScrollRange, 1);
       const targetFrame = Math.floor(progress * 120);
-      s7Frame = resolveSceneFrame(s7Frame, targetFrame);
+      s7Frame += (targetFrame - s7Frame) * 0.08;
       s7Stream.setTarget(Math.round(s7Frame), now);
       s7Stream.draw(Math.round(s7Frame));
     } else if (scrollTop < s9Start) {
@@ -2786,7 +2769,7 @@ function beginScrollJourney() {
       const scrolled = scrollTop - s8Start;
       const progress = Math.min(scrolled / s8ScrollRange, 1);
       const targetFrame = Math.floor(progress * 240);
-      s8Frame = resolveSceneFrame(s8Frame, targetFrame);
+      s8Frame += (targetFrame - s8Frame) * 0.08;
       s8Stream.setTarget(Math.round(s8Frame), now);
       s8Stream.draw(Math.round(s8Frame));
     } else if (scrollTop < s10Start) {
@@ -2826,7 +2809,7 @@ function beginScrollJourney() {
       const scrolled = scrollTop - s9Start;
       const progress = Math.min(scrolled / s9ScrollRange, 1);
       const targetFrame = Math.floor(progress * 240);
-      s9Frame = resolveSceneFrame(s9Frame, targetFrame);
+      s9Frame += (targetFrame - s9Frame) * 0.08;
       s9Stream.setTarget(Math.round(s9Frame), now);
       s9Stream.draw(Math.round(s9Frame));
     } else if (scrollTop < s11Start) {
@@ -2866,7 +2849,7 @@ function beginScrollJourney() {
       const scrolled = scrollTop - s10Start;
       const progress = Math.min(scrolled / s10ScrollRange, 1);
       const targetFrame = Math.floor(progress * 240);
-      s10Frame = resolveSceneFrame(s10Frame, targetFrame);
+      s10Frame += (targetFrame - s10Frame) * 0.08;
       s10Stream.setTarget(Math.round(s10Frame), now);
       s10Stream.draw(Math.round(s10Frame));
     } else if (scrollTop < s12Start) {
@@ -2906,7 +2889,7 @@ function beginScrollJourney() {
       const scrolled = scrollTop - s11Start;
       const progress = Math.min(scrolled / s11ScrollRange, 1);
       const targetFrame = Math.floor(progress * 240);
-      s11Frame = resolveSceneFrame(s11Frame, targetFrame);
+      s11Frame += (targetFrame - s11Frame) * 0.08;
       s11Stream.setTarget(Math.round(s11Frame), now);
       s11Stream.draw(Math.round(s11Frame));
     } else if (scrollTop < s13Start) {
@@ -2946,7 +2929,7 @@ function beginScrollJourney() {
       const scrolled = scrollTop - s12Start;
       const progress = Math.min(scrolled / s12ScrollRange, 1);
       const targetFrame = Math.floor(progress * 240);
-      s12Frame = resolveSceneFrame(s12Frame, targetFrame);
+      s12Frame += (targetFrame - s12Frame) * 0.08;
       s12Stream.setTarget(Math.round(s12Frame), now);
       s12Stream.draw(Math.round(s12Frame));
     } else if (scrollTop < s14Start) {
@@ -2986,7 +2969,7 @@ function beginScrollJourney() {
       const scrolled = scrollTop - s13Start;
       const progress = Math.min(scrolled / s13ScrollRange, 1);
       const targetFrame = Math.floor(progress * 240);
-      s13Frame = resolveSceneFrame(s13Frame, targetFrame);
+      s13Frame += (targetFrame - s13Frame) * 0.08;
       s13Stream.setTarget(Math.round(s13Frame), now);
       s13Stream.draw(Math.round(s13Frame));
     } else if (scrollTop < s15Start) {
@@ -3026,7 +3009,7 @@ function beginScrollJourney() {
       const scrolled = scrollTop - s14Start;
       const progress = Math.min(scrolled / s14ScrollRange, 1);
       const targetFrame = Math.floor(progress * 168);
-      s14Frame = resolveSceneFrame(s14Frame, targetFrame);
+      s14Frame += (targetFrame - s14Frame) * 0.08;
       s14Stream.setTarget(Math.round(s14Frame), now);
       s14Stream.draw(Math.round(s14Frame));
     } else if (scrollTop < s16Start) {
@@ -3066,7 +3049,7 @@ function beginScrollJourney() {
       const scrolled = scrollTop - s15Start;
       const progress = Math.min(scrolled / s15ScrollRange, 1);
       const targetFrame = Math.floor(progress * 288);
-      s15Frame = resolveSceneFrame(s15Frame, targetFrame);
+      s15Frame += (targetFrame - s15Frame) * 0.08;
       s15Stream.setTarget(Math.round(s15Frame), now);
       s15Stream.draw(Math.round(s15Frame));
     } else {
@@ -3105,7 +3088,7 @@ function beginScrollJourney() {
       const scrolled = scrollTop - s16Start;
       const progress = Math.min(scrolled / s16ScrollRange, 1);
       const targetFrame = Math.floor(progress * 120);
-      s16Frame = resolveSceneFrame(s16Frame, targetFrame);
+      s16Frame += (targetFrame - s16Frame) * 0.08;
       s16Stream.setTarget(Math.round(s16Frame), now);
       s16Stream.draw(Math.round(s16Frame));
     }
