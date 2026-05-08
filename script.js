@@ -3441,7 +3441,7 @@ function showWorldOverlay(onDismiss, options = {}) {
   const overlay = document.getElementById("worldOverlay");
   if (!overlay) return;
   const journey = options.scroller || document.getElementById("scrollJourney");
-  const dismissDelay = 300;
+  const holdDuration = 1800;
 
   buildOverlayGlyphField();
 
@@ -3458,16 +3458,32 @@ function showWorldOverlay(onDismiss, options = {}) {
   let dismissed = false;
   let scrollDismissEnabled = false;
   let guardedDismissOnScroll = null;
+  const blockScroll = (event) => {
+    debugScrollHold("worldOverlay", event);
+    event.preventDefault();
+  };
+  const blockKeyScroll = (event) => {
+    const blockedKeys = ["ArrowUp", "ArrowDown", "PageUp", "PageDown", "Home", "End", " "];
+    if (!blockedKeys.includes(event.key)) return;
+    debugScrollHold("worldOverlay:key", event);
+    event.preventDefault();
+  };
 
   function dismiss() {
     if (dismissed) return;
     dismissed = true;
     if (journey) {
+      journey.removeEventListener("wheel", blockScroll);
+      journey.removeEventListener("touchmove", blockScroll);
       if (guardedDismissOnScroll) {
+        journey.removeEventListener("scroll", guardedDismissOnScroll);
         journey.removeEventListener("wheel", guardedDismissOnScroll);
         journey.removeEventListener("touchmove", guardedDismissOnScroll);
       }
     }
+    window.removeEventListener("wheel", blockScroll);
+    window.removeEventListener("touchmove", blockScroll);
+    window.removeEventListener("keydown", blockKeyScroll);
     if (guardedDismissOnScroll) {
       window.removeEventListener("wheel", guardedDismissOnScroll);
       window.removeEventListener("touchmove", guardedDismissOnScroll);
@@ -3486,18 +3502,36 @@ function showWorldOverlay(onDismiss, options = {}) {
     dismiss();
   };
 
-  const enableScrollDismiss = () => {
+  const startScrollHold = () => {
     if (dismissed) return;
-    scrollDismissEnabled = true;
+    if (journey) {
+      journey.addEventListener("wheel", blockScroll, { passive: false });
+      journey.addEventListener("touchmove", blockScroll, { passive: false });
+    }
+    window.addEventListener("wheel", blockScroll, { passive: false });
+    window.addEventListener("touchmove", blockScroll, { passive: false });
+    window.addEventListener("keydown", blockKeyScroll);
+    window.setTimeout(() => {
+      if (dismissed) return;
+      scrollDismissEnabled = true;
+      if (journey) {
+        journey.removeEventListener("wheel", blockScroll);
+        journey.removeEventListener("touchmove", blockScroll);
+      }
+      window.removeEventListener("wheel", blockScroll);
+      window.removeEventListener("touchmove", blockScroll);
+      window.removeEventListener("keydown", blockKeyScroll);
+    }, holdDuration);
   };
 
   if (journey) {
+    journey.addEventListener("scroll", guardedDismissOnScroll);
     journey.addEventListener("wheel", guardedDismissOnScroll);
     journey.addEventListener("touchmove", guardedDismissOnScroll);
   }
   window.addEventListener("wheel", guardedDismissOnScroll);
   window.addEventListener("touchmove", guardedDismissOnScroll);
-  window.setTimeout(enableScrollDismiss, dismissDelay);
+  window.setTimeout(startScrollHold, 24);
 }
 
 function showProjectPopover(sceneKey, onDismiss, options = {}) {
