@@ -100,6 +100,15 @@ let soundStartRetryTimers = [];
 const soundWavePaths = Array.from(document.querySelectorAll(".sound-wave__motion"));
 const sceneFrameStreams = [];
 const FRAME_BASE_URL = typeof window.FRAME_BASE_URL === "string" ? window.FRAME_BASE_URL.trim() : "";
+const DEBUG_SCROLL_HOLDS = true;
+
+function debugScrollHold(source, event) {
+  if (!DEBUG_SCROLL_HOLDS) return;
+  console.info("[scroll-hold]", source, event?.type || "unknown", {
+    scrollY: window.scrollY,
+    target: event?.target?.id || event?.target?.className || event?.target?.tagName || "",
+  });
+}
 
 function normalizeFrameBaseUrl(url) {
   if (!url) return "";
@@ -848,6 +857,7 @@ function bindTouchScroller(scroller, onManualScroll) {
     if (typeof onManualScroll === "function") {
       onManualScroll();
     }
+    debugScrollHold("touchScroller", event);
     event.preventDefault();
   }, { passive: false });
 
@@ -2623,20 +2633,16 @@ function beginScrollJourney() {
         if (!scene3TitleTriggered) {
           scene3TitleTriggered = true;
           s3Stream.prime(0);
-          Promise.resolve(maybeRunSceneTitle("s2")).finally(() => {
-            scene3Unlocked = true;
-          });
+          maybeRunSceneTitle("s2");
         }
-        s3Stream.setTarget(0, now);
-        s3Stream.draw(0);
-      } else {
-        const scrolled = scrollTop - s3Start;
-        const progress = Math.min(scrolled / s3ScrollRange, 1);
-        const targetFrame = Math.floor(progress * 288);
-        s3Frame += (targetFrame - s3Frame) * 0.08;
-        s3Stream.setTarget(Math.round(s3Frame), now);
-        s3Stream.draw(Math.round(s3Frame));
+        scene3Unlocked = true;
       }
+      const scrolled = scrollTop - s3Start;
+      const progress = Math.min(scrolled / s3ScrollRange, 1);
+      const targetFrame = Math.floor(progress * 288);
+      s3Frame += (targetFrame - s3Frame) * 0.08;
+      s3Stream.setTarget(Math.round(s3Frame), now);
+      s3Stream.draw(Math.round(s3Frame));
     } else if (scrollTop < s5Start) {
       if (activeScene !== "s4") {
         activeScene = "s4";
@@ -3403,11 +3409,13 @@ function showWorldOverlay(onDismiss, options = {}) {
   let scrollDismissEnabled = false;
   let guardedDismissOnScroll = null;
   const blockScroll = (event) => {
+    debugScrollHold("worldOverlay", event);
     event.preventDefault();
   };
   const blockKeyScroll = (event) => {
     const blockedKeys = ["ArrowUp", "ArrowDown", "PageUp", "PageDown", "Home", "End", " "];
     if (!blockedKeys.includes(event.key)) return;
+    debugScrollHold("worldOverlay:key", event);
     event.preventDefault();
   };
 
@@ -3507,11 +3515,13 @@ function showProjectPopover(sceneKey, onDismiss, options = {}) {
     setProjectPopoverExpanded(!projectPopoverExpanded);
   };
   const blockScroll = (event) => {
+    debugScrollHold("projectPopover", event);
     event.preventDefault();
   };
   const blockKeyScroll = (event) => {
     const blockedKeys = ["ArrowUp", "ArrowDown", "PageUp", "PageDown", "Home", "End", " "];
     if (!blockedKeys.includes(event.key)) return;
+    debugScrollHold("projectPopover:key", event);
     event.preventDefault();
   };
   const stopPanelScrollDismiss = (event) => {
@@ -4121,11 +4131,13 @@ void main(){
     const releaseDelay = options.releaseDelay ?? 350;
     let scrollReleased = false;
     const blockScroll = (event) => {
+      debugScrollHold(`threshold:${content?.project || content?.english || "unknown"}`, event);
       event.preventDefault();
     };
     const blockKeyScroll = (event) => {
       const blockedKeys = ["ArrowUp", "ArrowDown", "PageUp", "PageDown", "Home", "End", " "];
       if (!blockedKeys.includes(event.key)) return;
+      debugScrollHold(`threshold:${content?.project || content?.english || "unknown"}:key`, event);
       event.preventDefault();
     };
     const releaseScroll = () => {
