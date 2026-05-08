@@ -1444,7 +1444,7 @@ function startExperience() {
     prepareIntroScrollMode();
   });
 
-  later(VEIL_DONE + 5500, () => {
+  later(VEIL_DONE + 6000, () => {
     activateIntroScrollMode();
   });
 
@@ -1769,7 +1769,7 @@ function prepareIntroScrollMode() {
   document.body.classList.add("is-video-surfacing");
   const stream = ensureIntroStream();
   if (stream) {
-    stream.preloadRange(0, 96);
+    stream.preloadRange(0, 140);
     stream.setTarget(0, performance.now());
     stream.draw(0);
   }
