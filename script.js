@@ -1768,7 +1768,7 @@ function ensureIntroStream() {
 
 function prepareIntroScrollMode() {
   introScrollUnlockAt = performance.now() + 3000;
-  document.body.classList.add("is-video-surfacing");
+  document.body.classList.add("is-video-surfacing", "is-intro-frame-ready");
   const stream = ensureIntroStream();
   if (stream) {
     stream.preloadRange(0, 140);
@@ -1848,6 +1848,7 @@ function handoffFromIntroScroll() {
   }
 
   document.body.classList.remove("is-intro-scroll-active");
+  document.body.classList.remove("is-intro-frame-ready");
   document.body.classList.add("is-intro-handoff-active");
   setIntroScrollPromptVisible(false);
   if (introScrollJourney) {

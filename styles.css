@@ -2947,6 +2947,7 @@ body.is-video-rising .ambient--vignette {
 }
 
 body.is-video-surfacing.is-intro-scroll-active .intro-scene-canvas,
+body.is-video-surfacing.is-intro-frame-ready .intro-scene-canvas,
 body.is-video-surfacing.is-intro-handoff-active .intro-scene-canvas {
   opacity: 1;
   visibility: visible;
