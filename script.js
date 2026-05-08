@@ -696,6 +696,7 @@ let introScrollRafId = null;
 let introScrollTransitioning = false;
 let introTotalFrames = 241;
 let introStream = null;
+let introOpeningFramesWarmed = false;
 let viewportMode = "desktop";
 let projectPopoverExpanded = false;
 
@@ -1344,6 +1345,8 @@ function startExperience() {
     return;
   }
 
+  warmIntroOpeningFrames();
+
   sequenceTimers.forEach((timer) => window.clearTimeout(timer));
   sequenceTimers = [];
 
@@ -1725,6 +1728,14 @@ function ensureIntroStream() {
     sceneKey: "intro",
   });
   return introStream;
+}
+
+function warmIntroOpeningFrames() {
+  if (introOpeningFramesWarmed) return;
+  const stream = ensureIntroStream();
+  if (!stream) return;
+  introOpeningFramesWarmed = true;
+  stream.preloadRange(0, 80);
 }
 
 function setIntroScrollPromptVisible(visible) {
