@@ -1464,7 +1464,10 @@ function createSceneFrameStream({ basePath, totalFrames, canvas, sceneKey = "" }
   const cache = new Map();
   const loading = new Map();
   let lastDrawnIndex = 0;
+  let lastPaintedIndex = null;
+  let lastRequestedIndex = null;
   let desiredIndex = 0;
+  let warmRange = null;
   let lastQueueRun = 0;
   let paused = document.visibilityState === "hidden";
   const resolvedBasePath = resolveFrameBasePath(basePath);
@@ -1512,6 +1515,7 @@ function createSceneFrameStream({ basePath, totalFrames, canvas, sceneKey = "" }
 
     const cleanup = () => {
       loading.delete(index);
+      processQueue(performance.now(), true);
     };
 
     img.onload = () => {
@@ -1562,13 +1566,28 @@ function createSceneFrameStream({ basePath, totalFrames, canvas, sceneKey = "" }
     }
   }
 
-  function processQueue(now = performance.now()) {
-    if (paused || now - lastQueueRun < throttleMs || (!isVisible() && cache.size > 0)) {
+  function processQueue(now = performance.now(), force = false) {
+    if (paused || (!force && now - lastQueueRun < throttleMs) || (!isVisible() && cache.size > 0 && !warmRange)) {
       return;
     }
     lastQueueRun = now;
 
     const priorities = buildPriorityList(desiredIndex);
+    if (warmRange) {
+      for (let index = warmRange.start; index < warmRange.end; index += 1) {
+        if (!cache.has(index)) {
+          priorities.push(index);
+        }
+      }
+      const rangeComplete = Array.from(
+        { length: warmRange.end - warmRange.start },
+        (_, offset) => warmRange.start + offset
+      ).every((index) => cache.has(index));
+      if (rangeComplete) {
+        warmRange = null;
+      }
+    }
+
     for (const index of priorities) {
       if (loading.size >= maxConcurrency) {
         break;
@@ -1581,14 +1600,24 @@ function createSceneFrameStream({ basePath, totalFrames, canvas, sceneKey = "" }
     const clampedIndex = Math.max(0, Math.min(totalFrames - 1, Math.round(index)));
     const img = cache.get(clampedIndex);
     if (img && img.complete && img.naturalWidth > 0) {
+      if (lastPaintedIndex === clampedIndex && lastRequestedIndex === clampedIndex) {
+        return;
+      }
       drawCoverImage(img);
       lastDrawnIndex = clampedIndex;
+      lastPaintedIndex = clampedIndex;
+      lastRequestedIndex = clampedIndex;
       return;
     }
 
     const fallback = cache.get(lastDrawnIndex);
     if (fallback && fallback.complete && fallback.naturalWidth > 0) {
+      if (lastPaintedIndex === lastDrawnIndex && lastRequestedIndex === clampedIndex) {
+        return;
+      }
       drawCoverImage(fallback);
+      lastPaintedIndex = lastDrawnIndex;
+      lastRequestedIndex = clampedIndex;
     }
   }
 
@@ -1602,6 +1631,9 @@ function createSceneFrameStream({ basePath, totalFrames, canvas, sceneKey = "" }
     const keep = normalizedKeepIndex === null ? null : cache.get(normalizedKeepIndex);
     cache.clear();
     loading.clear();
+    warmRange = null;
+    lastPaintedIndex = null;
+    lastRequestedIndex = null;
     if (keep) {
       cache.set(normalizedKeepIndex, keep);
       lastDrawnIndex = normalizedKeepIndex;
@@ -1611,10 +1643,14 @@ function createSceneFrameStream({ basePath, totalFrames, canvas, sceneKey = "" }
   function resizeToViewport() {
     canvas.width = window.innerWidth;
     canvas.height = window.innerHeight;
+    lastPaintedIndex = null;
+    lastRequestedIndex = null;
     draw(lastDrawnIndex);
   }
 
   function redraw() {
+    lastPaintedIndex = null;
+    lastRequestedIndex = null;
     draw(lastDrawnIndex);
   }
 
@@ -1635,9 +1671,9 @@ function createSceneFrameStream({ basePath, totalFrames, canvas, sceneKey = "" }
   function preloadRange(startIndex, count) {
     const start = Math.max(0, Math.min(totalFrames - 1, Math.round(startIndex)));
     const end = Math.min(start + count, totalFrames);
-    for (let index = start; index < end; index += 1) {
-      loadFrame(index);
-    }
+    warmRange = { start, end };
+    desiredIndex = start;
+    processQueue(performance.now(), true);
   }
 
   document.addEventListener("visibilitychange", () => {
