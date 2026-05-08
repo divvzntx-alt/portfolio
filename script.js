@@ -707,6 +707,7 @@ let introScrollTransitioning = false;
 let introTotalFrames = 241;
 let introStream = null;
 let introScrollUnlockAt = 0;
+let introScrollMaxWaitAt = 0;
 let viewportMode = "desktop";
 let projectPopoverExpanded = false;
 
@@ -1707,6 +1708,16 @@ function createSceneFrameStream({ basePath, totalFrames, canvas, sceneKey = "" }
     processQueue(performance.now(), true);
   }
 
+  function countLoadedInRange(startIndex = 0, count = totalFrames) {
+    const start = Math.max(0, Math.min(totalFrames - 1, Math.round(startIndex)));
+    const end = Math.min(start + count, totalFrames);
+    let loaded = 0;
+    for (let index = start; index < end; index += 1) {
+      if (cache.has(index)) loaded += 1;
+    }
+    return loaded;
+  }
+
   function getDebugState(targetIndex = desiredIndex) {
     const clampedIndex = Math.max(0, Math.min(totalFrames - 1, Math.round(targetIndex)));
     return {
@@ -1736,6 +1747,7 @@ function createSceneFrameStream({ basePath, totalFrames, canvas, sceneKey = "" }
     draw,
     prime,
     preloadRange,
+    countLoadedInRange,
     processQueue,
     redraw,
     resizeToViewport,
@@ -1767,11 +1779,13 @@ function ensureIntroStream() {
 }
 
 function prepareIntroScrollMode() {
-  introScrollUnlockAt = performance.now() + 3000;
+  const now = performance.now();
+  introScrollUnlockAt = now + 3000;
+  introScrollMaxWaitAt = now + 8000;
   document.body.classList.add("is-video-surfacing", "is-intro-frame-ready");
   const stream = ensureIntroStream();
   if (stream) {
-    stream.preloadRange(0, 140);
+    stream.preloadRange(0, introTotalFrames);
     stream.setTarget(0, performance.now());
     stream.draw(0);
   }
@@ -1783,9 +1797,18 @@ function setIntroScrollPromptVisible(visible) {
 
 function activateIntroScrollMode() {
   if (introScrollTransitioning) return;
-  const remainingHold = introScrollUnlockAt - performance.now();
-  if (remainingHold > 0) {
-    window.setTimeout(activateIntroScrollMode, remainingHold);
+  const now = performance.now();
+  const stream = ensureIntroStream();
+  const loadedIntroFrames = typeof stream?.countLoadedInRange === "function"
+    ? stream.countLoadedInRange(0, introTotalFrames)
+    : 0;
+  const waitingForMinimumHold = now < introScrollUnlockAt;
+  const waitingForFrames = loadedIntroFrames < 220 && now < introScrollMaxWaitAt;
+  if (waitingForMinimumHold || waitingForFrames) {
+    const nextCheckDelay = waitingForMinimumHold
+      ? Math.max(80, introScrollUnlockAt - now)
+      : 160;
+    window.setTimeout(activateIntroScrollMode, nextCheckDelay);
     return;
   }
 
@@ -1807,7 +1830,6 @@ function activateIntroScrollMode() {
     });
   }
 
-  const stream = ensureIntroStream();
   if (stream) {
     stream.prime(0);
     stream.setTarget(0, performance.now());
