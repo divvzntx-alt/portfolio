@@ -1710,7 +1710,7 @@ function ensureIntroStream() {
   if (introStream) return introStream;
   resizeIntroCanvas();
   introStream = createSceneFrameStream({
-    basePath: "./assets/palace-intro-frames",
+    basePath: "./assets/palace-intro-frames-1280",
     totalFrames: introTotalFrames,
     canvas: introSceneCanvas,
     sceneKey: "intro",
