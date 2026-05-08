@@ -606,7 +606,6 @@ const thresholdSceneContent = {
   s10: { brahmi: "𑀧𑀼𑀱𑁆𑀓𑀭𑀺𑀡𑀺", english: "The Sacred Waters", project: "Reignite", rail: "reignite" },
   s13: { brahmi: "𑀯𑀦𑀧𑁆𑀭𑀲𑁆𑀣𑀫𑁆", english: "The Forest Terrace", project: "eCommerce Northwest", rail: "ecnw" },
   s15: { brahmi: "𑀉𑀤𑁆𑀬𑀸𑀦𑀫𑁆", english: "The Inner Garden", project: "Contact", rail: "contact" },
-  s16: { brahmi: "𑀘𑀦𑁆𑀢𑀺𑀧𑁆𑀧𑀼 𑀇𑀝𑀫𑁆", english: "A Place to Meet", project: "Contact", rail: "contact" },
 };
 
 const railProjectByScene = {
@@ -2259,10 +2258,6 @@ function beginScrollJourney() {
     if (typeof thresholdController.setActiveTitleOwner === "function") {
       thresholdController.setActiveTitleOwner(sceneKey);
     }
-    if (sceneKey === "s16") {
-      sceneTitleShown.add(sceneKey);
-      return;
-    }
     if (sceneKey === "s2") {
       if (typeof thresholdController.runSceneTitle !== "function") return;
       sceneTitleShown.add(sceneKey);
@@ -2293,7 +2288,6 @@ function beginScrollJourney() {
     { sceneKey: "s10", start: s10Start },
     { sceneKey: "s13", start: s13Start },
     { sceneKey: "s15", start: s15Start },
-    { sceneKey: "s16", start: s16Start },
   ];
   function thresholdStartForScene(sceneKey) {
     return locationThresholdSeams.find((seam) => seam.sceneKey === sceneKey)?.start ?? null;
