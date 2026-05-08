@@ -2113,7 +2113,7 @@ function beginScrollJourney() {
 
   function ensureS5Stream() {
     if (!s5Initialized) {
-      s5Stream = createSceneFrameStream({ basePath: "./assets/scene5-frames", totalFrames: 241, canvas: s5Canvas, sceneKey: "s5" });
+      s5Stream = createSceneFrameStream({ basePath: "./assets/scene5-frames-1600", totalFrames: 241, canvas: s5Canvas, sceneKey: "s5" });
       s5Initialized = true;
     }
     return s5Stream;
@@ -2153,7 +2153,7 @@ function beginScrollJourney() {
 
   function ensureS10Stream() {
     if (!s10Initialized) {
-      s10Stream = createSceneFrameStream({ basePath: "./assets/scene10-frames", totalFrames: 241, canvas: s10Canvas, sceneKey: "s10" });
+      s10Stream = createSceneFrameStream({ basePath: "./assets/scene10-frames-1600", totalFrames: 241, canvas: s10Canvas, sceneKey: "s10" });
       s10Initialized = true;
     }
     return s10Stream;
@@ -2161,7 +2161,7 @@ function beginScrollJourney() {
 
   function ensureS11Stream() {
     if (!s11Initialized) {
-      s11Stream = createSceneFrameStream({ basePath: "./assets/scene11-frames", totalFrames: 241, canvas: s11Canvas, sceneKey: "s11" });
+      s11Stream = createSceneFrameStream({ basePath: "./assets/scene11-frames-1600", totalFrames: 241, canvas: s11Canvas, sceneKey: "s11" });
       s11Initialized = true;
     }
     return s11Stream;
@@ -2169,7 +2169,7 @@ function beginScrollJourney() {
 
   function ensureS12Stream() {
     if (!s12Initialized) {
-      s12Stream = createSceneFrameStream({ basePath: "./assets/scene12-frames", totalFrames: 241, canvas: s12Canvas, sceneKey: "s12" });
+      s12Stream = createSceneFrameStream({ basePath: "./assets/scene12-frames-1600", totalFrames: 241, canvas: s12Canvas, sceneKey: "s12" });
       s12Initialized = true;
     }
     return s12Stream;
@@ -2177,7 +2177,7 @@ function beginScrollJourney() {
 
   function ensureS13Stream() {
     if (!s13Initialized) {
-      s13Stream = createSceneFrameStream({ basePath: "./assets/scene13-frames", totalFrames: 241, canvas: s13Canvas, sceneKey: "s13" });
+      s13Stream = createSceneFrameStream({ basePath: "./assets/scene13-frames-1600", totalFrames: 241, canvas: s13Canvas, sceneKey: "s13" });
       s13Initialized = true;
     }
     return s13Stream;
@@ -2193,7 +2193,7 @@ function beginScrollJourney() {
 
   function ensureS15Stream() {
     if (!s15Initialized) {
-      s15Stream = createSceneFrameStream({ basePath: "./assets/scene15-frames", totalFrames: 289, canvas: s15Canvas, sceneKey: "s15" });
+      s15Stream = createSceneFrameStream({ basePath: "./assets/scene15-frames-1600", totalFrames: 289, canvas: s15Canvas, sceneKey: "s15" });
       s15Initialized = true;
     }
     return s15Stream;
@@ -2201,7 +2201,7 @@ function beginScrollJourney() {
 
   function ensureS16Stream() {
     if (!s16Initialized) {
-      s16Stream = createSceneFrameStream({ basePath: "./assets/scene16-frames", totalFrames: 121, canvas: s16Canvas, sceneKey: "s16" });
+      s16Stream = createSceneFrameStream({ basePath: "./assets/scene16-frames-1600", totalFrames: 121, canvas: s16Canvas, sceneKey: "s16" });
       s16Initialized = true;
     }
     return s16Stream;
