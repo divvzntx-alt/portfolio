@@ -1518,11 +1518,18 @@ function createSceneFrameStream({ basePath, totalFrames, canvas, sceneKey = "" }
       processQueue(performance.now(), true);
     };
 
-    img.onload = () => {
-      cleanup();
+    img.onload = async () => {
       if (img.naturalWidth > 0) {
-        cache.set(index, img);
+        try {
+          if (typeof img.decode === "function") {
+            await img.decode();
+          }
+          cache.set(index, img);
+        } catch {
+          cache.set(index, img);
+        }
       }
+      cleanup();
     };
 
     img.onerror = cleanup;
