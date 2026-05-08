@@ -1354,47 +1354,65 @@ function hideLoadingScreen() {
 }
 
 function startLoadingAnimation() {
-  const minVisibleUntil = performance.now() + 1300;
-  const maxWaitUntil = performance.now() + 9000;
-  const stream = ensureIntroStream();
+  let progress = 0;
+  const timer = setInterval(() => {
+    progress += 4;
+    setLoaderProgress(progress);
 
-  if (!stream || typeof stream.countLoadedInRange !== "function") {
-    let fallbackProgress = 0;
-    const fallbackTimer = setInterval(() => {
-      fallbackProgress += 4;
-      setLoaderProgress(fallbackProgress);
-      if (fallbackProgress >= 100) {
-        clearInterval(fallbackTimer);
-        setTimeout(hideLoader, 220);
-      }
-    }, 55);
-    return;
+    if (progress >= 100) {
+      clearInterval(timer);
+      setTimeout(hideLoader, 220);
+    }
+  }, 55);
+}
+
+function preloadIntroFramesWithLoader() {
+  if (introFramesReadyBeforeSequence) {
+    return Promise.resolve();
   }
 
+  showLoadingScreen(0);
+  const stream = ensureIntroStream();
+  if (!stream || typeof stream.countLoadedInRange !== "function") {
+    return new Promise((resolve) => {
+      window.setTimeout(() => {
+        hideLoadingScreen();
+        resolve();
+      }, 900);
+    });
+  }
+
+  const minVisibleUntil = performance.now() + 900;
+  const maxWaitUntil = performance.now() + 9000;
   stream.preloadRange(0, introTotalFrames);
   stream.setTarget(0, performance.now());
   stream.draw(0);
 
-  const check = () => {
-    stream.processQueue(performance.now(), true);
-    const loaded = stream.countLoadedInRange(0, introTotalFrames);
-    const progress = Math.min(100, (loaded / 220) * 100);
-    setLoaderProgress(progress);
-    const enoughFramesReady = loaded >= 220;
-    const pastMinimum = performance.now() >= minVisibleUntil;
-    const timedOut = performance.now() >= maxWaitUntil;
+  return new Promise((resolve) => {
+    const check = () => {
+      stream.processQueue(performance.now(), true);
+      const loaded = stream.countLoadedInRange(0, introTotalFrames);
+      const progress = Math.min(100, (loaded / 220) * 100);
+      setLoaderProgress(progress);
+      const enoughFramesReady = loaded >= 220;
+      const pastMinimum = performance.now() >= minVisibleUntil;
+      const timedOut = performance.now() >= maxWaitUntil;
 
-    if ((enoughFramesReady && pastMinimum) || timedOut) {
-      introFramesReadyBeforeSequence = enoughFramesReady;
-      setLoaderProgress(100);
-      window.setTimeout(hideLoader, 220);
-      return;
-    }
+      if ((enoughFramesReady && pastMinimum) || timedOut) {
+        introFramesReadyBeforeSequence = enoughFramesReady;
+        setLoaderProgress(100);
+        window.setTimeout(() => {
+          hideLoadingScreen();
+          resolve();
+        }, 240);
+        return;
+      }
 
-    window.setTimeout(check, 120);
-  };
+      window.setTimeout(check, 120);
+    };
 
-  check();
+    check();
+  });
 }
 
 function startExperience() {
@@ -1526,14 +1544,14 @@ walkButton.addEventListener("click", () => {
   setSoundEnabled(true, true);
   startSiteMusicWithEntryRetries();
   requestMotionFromGesture();
-  startExperience();
+  preloadIntroFramesWithLoader().then(startExperience);
 });
 
 if (enterSilentButton) {
   enterSilentButton.addEventListener("click", () => {
     setSoundEnabled(false, false, false);
     requestMotionFromGesture();
-    startExperience();
+    preloadIntroFramesWithLoader().then(startExperience);
   });
 }
 
