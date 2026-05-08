@@ -2259,9 +2259,9 @@ function beginScrollJourney() {
       thresholdController.setActiveTitleOwner(sceneKey);
     }
     if (sceneKey === "s2") {
-      if (typeof thresholdController.runSceneTitle !== "function") return;
+      if (typeof thresholdController.runFlowTitle !== "function") return;
       sceneTitleShown.add(sceneKey);
-      return thresholdController.runSceneTitle(content);
+      return thresholdController.runFlowTitle(content);
     }
     if (typeof thresholdController.runFlowTitle !== "function") return;
     sceneTitleShown.add(sceneKey);
