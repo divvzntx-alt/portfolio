@@ -1430,6 +1430,16 @@ function startExperience() {
   });
 
   const VEIL_DONE = TEXT_DONE;
+  later(VEIL_DONE + 2300, () => {
+    const stream = ensureIntroStream();
+    if (stream) {
+      stream.prime(0);
+      stream.setTarget(0, performance.now());
+      stream.draw(0);
+    }
+    document.body.classList.add("is-video-surfacing");
+  });
+
   later(VEIL_DONE + 3000, () => {
     activateIntroScrollMode();
   });
