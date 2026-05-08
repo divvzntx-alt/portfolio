@@ -1518,18 +1518,11 @@ function createSceneFrameStream({ basePath, totalFrames, canvas, sceneKey = "" }
       processQueue(performance.now(), true);
     };
 
-    img.onload = async () => {
-      if (img.naturalWidth > 0) {
-        try {
-          if (typeof img.decode === "function") {
-            await img.decode();
-          }
-          cache.set(index, img);
-        } catch {
-          cache.set(index, img);
-        }
-      }
+    img.onload = () => {
       cleanup();
+      if (img.naturalWidth > 0) {
+        cache.set(index, img);
+      }
     };
 
     img.onerror = cleanup;
@@ -2144,7 +2137,7 @@ function beginScrollJourney() {
 
   function ensureS8Stream() {
     if (!s8Initialized) {
-      s8Stream = createSceneFrameStream({ basePath: "./assets/scene8-frames", totalFrames: 241, canvas: s8Canvas, sceneKey: "s8" });
+      s8Stream = createSceneFrameStream({ basePath: "./assets/scene8-frames-compressed", totalFrames: 241, canvas: s8Canvas, sceneKey: "s8" });
       s8Initialized = true;
     }
     return s8Stream;
