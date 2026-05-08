@@ -708,7 +708,6 @@ let introTotalFrames = 241;
 let introStream = null;
 let introScrollUnlockAt = 0;
 let introScrollMaxWaitAt = 0;
-let introFramesReadyBeforeSequence = false;
 let viewportMode = "desktop";
 let projectPopoverExpanded = false;
 
@@ -1338,81 +1337,18 @@ function hideLoader() {
   window.setTimeout(openingReveal, 140);
 }
 
-function setLoaderProgress(progress) {
-  const clampedProgress = Math.max(0, Math.min(100, Math.round(progress)));
-  englishCount.textContent = String(clampedProgress).padStart(3, "0");
-  brahmiCount.textContent = toBrahmiNumber(100 - clampedProgress);
-}
-
-function showLoadingScreen(progress = 0) {
-  setLoaderProgress(progress);
-  loadingScreen.classList.remove("is-hidden");
-}
-
-function hideLoadingScreen() {
-  loadingScreen.classList.add("is-hidden");
-}
-
 function startLoadingAnimation() {
   let progress = 0;
   const timer = setInterval(() => {
     progress += 4;
-    setLoaderProgress(progress);
+    englishCount.textContent = String(progress).padStart(3, "0");
+    brahmiCount.textContent = toBrahmiNumber(100 - progress);
 
     if (progress >= 100) {
       clearInterval(timer);
       setTimeout(hideLoader, 220);
     }
   }, 55);
-}
-
-function preloadIntroFramesWithLoader() {
-  if (introFramesReadyBeforeSequence) {
-    return Promise.resolve();
-  }
-
-  showLoadingScreen(0);
-  const stream = ensureIntroStream();
-  if (!stream || typeof stream.countLoadedInRange !== "function") {
-    return new Promise((resolve) => {
-      window.setTimeout(() => {
-        hideLoadingScreen();
-        resolve();
-      }, 900);
-    });
-  }
-
-  const minVisibleUntil = performance.now() + 900;
-  const maxWaitUntil = performance.now() + 9000;
-  stream.preloadRange(0, introTotalFrames);
-  stream.setTarget(0, performance.now());
-  stream.draw(0);
-
-  return new Promise((resolve) => {
-    const check = () => {
-      stream.processQueue(performance.now(), true);
-      const loaded = stream.countLoadedInRange(0, introTotalFrames);
-      const progress = Math.min(100, (loaded / 220) * 100);
-      setLoaderProgress(progress);
-      const enoughFramesReady = loaded >= 220;
-      const pastMinimum = performance.now() >= minVisibleUntil;
-      const timedOut = performance.now() >= maxWaitUntil;
-
-      if ((enoughFramesReady && pastMinimum) || timedOut) {
-        introFramesReadyBeforeSequence = enoughFramesReady;
-        setLoaderProgress(100);
-        window.setTimeout(() => {
-          hideLoadingScreen();
-          resolve();
-        }, 240);
-        return;
-      }
-
-      window.setTimeout(check, 120);
-    };
-
-    check();
-  });
 }
 
 function startExperience() {
@@ -1544,14 +1480,14 @@ walkButton.addEventListener("click", () => {
   setSoundEnabled(true, true);
   startSiteMusicWithEntryRetries();
   requestMotionFromGesture();
-  preloadIntroFramesWithLoader().then(startExperience);
+  startExperience();
 });
 
 if (enterSilentButton) {
   enterSilentButton.addEventListener("click", () => {
     setSoundEnabled(false, false, false);
     requestMotionFromGesture();
-    preloadIntroFramesWithLoader().then(startExperience);
+    startExperience();
   });
 }
 
@@ -1844,8 +1780,8 @@ function ensureIntroStream() {
 
 function prepareIntroScrollMode() {
   const now = performance.now();
-  introScrollUnlockAt = introFramesReadyBeforeSequence ? now : now + 3000;
-  introScrollMaxWaitAt = introFramesReadyBeforeSequence ? now : now + 8000;
+  introScrollUnlockAt = now + 3000;
+  introScrollMaxWaitAt = now + 8000;
   document.body.classList.add("is-video-surfacing", "is-intro-frame-ready");
   const stream = ensureIntroStream();
   if (stream) {
