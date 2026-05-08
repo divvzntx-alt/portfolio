@@ -2391,7 +2391,6 @@ function beginScrollJourney() {
     { sceneKey: "s8", start: s8Start },
     { sceneKey: "s10", start: s10Start },
     { sceneKey: "s13", start: s13Start },
-    { sceneKey: "s15", start: s15Start },
   ];
   function thresholdStartForScene(sceneKey) {
     return locationThresholdSeams.find((seam) => seam.sceneKey === sceneKey)?.start ?? null;
@@ -2518,7 +2517,7 @@ function beginScrollJourney() {
     const seam = projectThresholdSeams.find((entry) => entry.sceneKey === sceneKey);
     const firstTime = !state.shown;
     const isReverse = direction < 0;
-    const holdDuration = isReverse ? 0 : 1500;
+    const holdDuration = isReverse || sceneKey === "s14" ? 0 : 1500;
     const autoDismissAfter = isReverse ? 850 : 0;
     state.shown = true;
     state.unlocked = true;
