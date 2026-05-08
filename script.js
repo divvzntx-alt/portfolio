@@ -101,6 +101,8 @@ const soundWavePaths = Array.from(document.querySelectorAll(".sound-wave__motion
 const sceneFrameStreams = [];
 const FRAME_BASE_URL = typeof window.FRAME_BASE_URL === "string" ? window.FRAME_BASE_URL.trim() : "";
 const DEBUG_SCROLL_HOLDS = true;
+const DEBUG_INTRO_SCROLL = true;
+let lastIntroDebugLog = 0;
 
 function debugScrollHold(source, event) {
   if (!DEBUG_SCROLL_HOLDS) return;
@@ -108,6 +110,14 @@ function debugScrollHold(source, event) {
     scrollY: window.scrollY,
     target: event?.target?.id || event?.target?.className || event?.target?.tagName || "",
   });
+}
+
+function debugIntroScroll(source, data = {}, throttleMs = 0) {
+  if (!DEBUG_INTRO_SCROLL) return;
+  const now = performance.now();
+  if (throttleMs > 0 && now - lastIntroDebugLog < throttleMs) return;
+  lastIntroDebugLog = now;
+  console.info("[intro-scroll]", source, data);
 }
 
 function normalizeFrameBaseUrl(url) {
@@ -1430,16 +1440,6 @@ function startExperience() {
   });
 
   const VEIL_DONE = TEXT_DONE;
-  later(VEIL_DONE + 2300, () => {
-    const stream = ensureIntroStream();
-    if (stream) {
-      stream.prime(0);
-      stream.setTarget(0, performance.now());
-      stream.draw(0);
-    }
-    document.body.classList.add("is-video-surfacing");
-  });
-
   later(VEIL_DONE + 3000, () => {
     activateIntroScrollMode();
   });
@@ -1458,6 +1458,13 @@ window.addEventListener("mousemove", setMouseMotion);
 window.addEventListener("mouseleave", resetMouseMotion);
 if (introScrollJourney) {
   introScrollJourney.addEventListener("scroll", handleIntroScrollInput, { passive: true });
+  introScrollJourney.addEventListener("wheel", (event) => {
+    if (!introScrollActive || introScrollTransitioning) return;
+    debugIntroScroll("wheel", {
+      deltaY: Math.round(event.deltaY),
+      scrollTop: Math.round(introScrollJourney.scrollTop),
+    }, 120);
+  }, { passive: true });
   bindTouchScroller(introScrollJourney, handleIntroScrollInput);
 }
 if (scrollJourney) {
@@ -1695,6 +1702,22 @@ function createSceneFrameStream({ basePath, totalFrames, canvas, sceneKey = "" }
     processQueue(performance.now(), true);
   }
 
+  function getDebugState(targetIndex = desiredIndex) {
+    const clampedIndex = Math.max(0, Math.min(totalFrames - 1, Math.round(targetIndex)));
+    return {
+      cacheSize: cache.size,
+      loadingSize: loading.size,
+      desiredIndex,
+      lastDrawnIndex,
+      lastPaintedIndex,
+      lastRequestedIndex,
+      hasTarget: cache.has(clampedIndex),
+      isTargetLoading: loading.has(clampedIndex),
+      visible: isVisible(),
+      warmRange,
+    };
+  }
+
   document.addEventListener("visibilitychange", () => {
     paused = document.visibilityState === "hidden";
     if (!paused) {
@@ -1711,6 +1734,7 @@ function createSceneFrameStream({ basePath, totalFrames, canvas, sceneKey = "" }
     processQueue,
     redraw,
     resizeToViewport,
+    getDebugState,
     isVisible,
     setTarget,
   };
@@ -1748,10 +1772,6 @@ function activateIntroScrollMode() {
   introScrollComplete = false;
   introScrollProgress = 0;
   introScrollTargetProgress = 0;
-  if (fluidBgController) {
-    fluidBgController.destroy();
-    fluidBgController = null;
-  }
   document.body.classList.add("is-video-surfacing", "is-intro-scroll-active");
   document.body.classList.remove("is-intro-handoff-active");
   setIntroScrollPromptVisible(true);
@@ -1759,6 +1779,11 @@ function activateIntroScrollMode() {
     introScrollJourney.classList.add("is-active");
     introScrollJourney.setAttribute("aria-hidden", "false");
     introScrollJourney.scrollTop = 0;
+    debugIntroScroll("activated", {
+      scrollHeight: Math.round(introScrollJourney.scrollHeight),
+      clientHeight: Math.round(introScrollJourney.clientHeight),
+      maxScrollTop: Math.round(introScrollJourney.scrollHeight - introScrollJourney.clientHeight),
+    });
   }
 
   const stream = ensureIntroStream();
@@ -1783,6 +1808,10 @@ function syncIntroTargetProgress() {
 function handleIntroScrollInput() {
   if (!introScrollActive || introScrollTransitioning) return;
   syncIntroTargetProgress();
+  debugIntroScroll("scroll", {
+    scrollTop: Math.round(introScrollJourney?.scrollTop || 0),
+    targetProgress: Number(introScrollTargetProgress.toFixed(4)),
+  }, 120);
 }
 
 function handoffFromIntroScroll() {
@@ -1849,6 +1878,13 @@ function runIntroScrollFrame(now) {
   const targetFrame = progressToFrameIndex(introScrollProgress);
   stream.setTarget(targetFrame, now);
   stream.draw(targetFrame);
+  debugIntroScroll("frame", {
+    scrollTop: Math.round(introScrollJourney?.scrollTop || 0),
+    targetProgress: Number(introScrollTargetProgress.toFixed(4)),
+    renderProgress: Number(introScrollProgress.toFixed(4)),
+    targetFrame,
+    stream: typeof stream.getDebugState === "function" ? stream.getDebugState(targetFrame) : null,
+  }, 250);
 
   if (shouldCompleteIntro(introScrollProgress, introScrollTargetProgress)) {
     handoffFromIntroScroll();
