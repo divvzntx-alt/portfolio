@@ -24,6 +24,10 @@ assets/scene14-frames 2/
 assets/scene15-frames 2/
 assets/scene16-frames 2/
 
+# Frame sequences are hosted on Cloudflare R2 for deployment performance.
+assets/palace-intro-frames/
+assets/scene*-frames/
+
 # Keep project case studies and lightweight assets tracked
 !projects/
 !projects/**
