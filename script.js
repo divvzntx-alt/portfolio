@@ -2137,7 +2137,7 @@ function beginScrollJourney() {
 
   function ensureS8Stream() {
     if (!s8Initialized) {
-      s8Stream = createSceneFrameStream({ basePath: "./assets/scene8-frames-compressed", totalFrames: 241, canvas: s8Canvas, sceneKey: "s8" });
+      s8Stream = createSceneFrameStream({ basePath: "./assets/scene8-frames-1600", totalFrames: 241, canvas: s8Canvas, sceneKey: "s8" });
       s8Initialized = true;
     }
     return s8Stream;
