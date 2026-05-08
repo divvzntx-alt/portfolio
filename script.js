@@ -706,6 +706,7 @@ let introScrollRafId = null;
 let introScrollTransitioning = false;
 let introTotalFrames = 241;
 let introStream = null;
+let introScrollUnlockAt = 0;
 let viewportMode = "desktop";
 let projectPopoverExpanded = false;
 
@@ -1766,6 +1767,7 @@ function ensureIntroStream() {
 }
 
 function prepareIntroScrollMode() {
+  introScrollUnlockAt = performance.now() + 3000;
   document.body.classList.add("is-video-surfacing");
   const stream = ensureIntroStream();
   if (stream) {
@@ -1781,6 +1783,11 @@ function setIntroScrollPromptVisible(visible) {
 
 function activateIntroScrollMode() {
   if (introScrollTransitioning) return;
+  const remainingHold = introScrollUnlockAt - performance.now();
+  if (remainingHold > 0) {
+    window.setTimeout(activateIntroScrollMode, remainingHold);
+    return;
+  }
 
   introScrollActive = true;
   introScrollComplete = false;
