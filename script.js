@@ -2420,7 +2420,7 @@ function beginScrollJourney() {
     const seam = projectThresholdSeams.find((entry) => entry.sceneKey === sceneKey);
     const firstTime = !state.shown;
     const isReverse = direction < 0;
-    const holdDuration = isReverse ? 0 : 1200;
+    const holdDuration = isReverse ? 0 : 1500;
     const autoDismissAfter = isReverse ? 850 : 0;
     state.shown = true;
     state.unlocked = true;
