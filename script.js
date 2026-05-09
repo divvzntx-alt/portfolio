@@ -3389,98 +3389,6 @@ function beginScrollJourney() {
     contact:  { scrollPos: s15Start + 1, content: thresholdSceneContent.s15, sceneKey: "s15", ensureStream: ensureS15Stream },
   };
 
-  function getRailReadinessItems(sceneKey) {
-    switch (sceneKey) {
-      case "s2":
-        return [{ stream: s3Stream, count: 80 }];
-      case "s6":
-        return [{ stream: ensureS6Stream(), count: 80 }];
-      case "s8":
-        return [{ stream: ensureS8Stream(), count: 80 }];
-      case "s10":
-        return [{ stream: ensureS10Stream(), count: 80 }];
-      case "s13":
-        return [{ stream: ensureS13Stream(), count: 80 }];
-      case "s15":
-        return [
-          { stream: ensureS15Stream(), count: 160 },
-          { stream: ensureS16Stream(), count: 80 },
-        ];
-      default:
-        return [];
-    }
-  }
-
-  function holdRailScrollUntilReady(sceneKey) {
-    const items = getRailReadinessItems(sceneKey).filter((item) => item.stream);
-    if (!items.length) return;
-
-    const startedAt = performance.now();
-    const minHold = 900;
-    const maxHold = sceneKey === "s15" ? 4200 : 3200;
-    let released = false;
-
-    document.body.classList.remove("is-scroll-prompt-visible");
-
-    const blockScroll = (event) => {
-      debugScrollHold(`rail:${sceneKey}`, event);
-      event.preventDefault();
-    };
-    const blockKeyScroll = (event) => {
-      const blockedKeys = ["ArrowUp", "ArrowDown", "PageUp", "PageDown", "Home", "End", " "];
-      if (!blockedKeys.includes(event.key)) return;
-      debugScrollHold(`rail:${sceneKey}:key`, event);
-      event.preventDefault();
-    };
-    const release = () => {
-      if (released) return;
-      released = true;
-      journey.removeEventListener("wheel", blockScroll);
-      journey.removeEventListener("touchmove", blockScroll);
-      window.removeEventListener("wheel", blockScroll);
-      window.removeEventListener("touchmove", blockScroll);
-      window.removeEventListener("keydown", blockKeyScroll);
-      document.body.classList.add("is-scroll-prompt-visible");
-    };
-
-    journey.addEventListener("wheel", blockScroll, { passive: false });
-    journey.addEventListener("touchmove", blockScroll, { passive: false });
-    window.addEventListener("wheel", blockScroll, { passive: false });
-    window.addEventListener("touchmove", blockScroll, { passive: false });
-    window.addEventListener("keydown", blockKeyScroll);
-
-    items.forEach(({ stream, count }) => {
-      if (typeof stream.retainLoadedFrames === "function" && sceneKey === "s15") {
-        stream.retainLoadedFrames();
-      }
-      stream.preloadRange(0, count);
-      stream.setTarget(0, startedAt);
-    });
-
-    const tick = () => {
-      if (released) return;
-      const now = performance.now();
-      let ready = true;
-
-      items.forEach(({ stream, count }) => {
-        stream.processQueue(now, true);
-        if (typeof stream.countLoadedInRange === "function" && stream.countLoadedInRange(0, count) < count) {
-          ready = false;
-        }
-      });
-
-      const elapsed = now - startedAt;
-      if ((ready && elapsed >= minHold) || elapsed >= maxHold) {
-        release();
-        return;
-      }
-
-      window.setTimeout(tick, 80);
-    };
-
-    tick();
-  }
-
   journeyChromeGlyphs.forEach((btn) => {
     btn.addEventListener("click", () => {
       const project = btn.dataset.project;
@@ -3544,8 +3452,6 @@ function beginScrollJourney() {
         overlayShown = true;
         scene3TitleTriggered = true;
       }
-
-      holdRailScrollUntilReady(target.sceneKey);
 
       requestAnimationFrame(() => {
         if (thresholdController && typeof thresholdController.runFlowTitle === "function") {
