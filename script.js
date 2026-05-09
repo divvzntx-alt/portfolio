@@ -2688,6 +2688,30 @@ function beginScrollJourney() {
     }
   }
 
+  function warmFramesDuringProjectHold(sceneKey, holdDuration) {
+    if (holdDuration <= 0) return;
+    const warmMap = {
+      s4: { getStream: ensureS6Stream, scene: "s6", count: 120 },
+      s11: { getStream: ensureS13Stream, scene: "s13", count: 120 },
+    };
+    const target = warmMap[sceneKey];
+    if (!target) return;
+
+    const startedAt = performance.now();
+    const stream = target.getStream();
+    const tick = () => {
+      const now = performance.now();
+      stream.preloadRange(0, target.count);
+      stream.setTarget(0, now);
+      stream.processQueue(now, true);
+      if (now - startedAt < holdDuration) {
+        window.setTimeout(tick, 90);
+      }
+    };
+
+    window.setTimeout(tick, 90);
+  }
+
   function maybeShowProjectScene(sceneKey, direction = 1) {
     const state = projectSceneState[sceneKey];
     if (!state) return;
@@ -2718,6 +2742,9 @@ function beginScrollJourney() {
     activeProjectPopoverHoldUntil = performance.now() + holdDuration;
     activeProjectPopoverShownAt = performance.now();
     activeProjectPopoverShownScrollTop = journey.scrollTop;
+    if (!isReverse) {
+      warmFramesDuringProjectHold(sceneKey, holdDuration);
+    }
     showProjectPopover(sceneKey, () => {
       activeProjectPopoverScene = null;
       dismissActiveProjectPopover = null;
