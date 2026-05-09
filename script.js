@@ -709,6 +709,8 @@ let introStream = null;
 let introScrollUnlockAt = 0;
 let introScrollMaxWaitAt = 0;
 let introFramesReadyBeforeSequence = false;
+let contactPreloadS15Stream = null;
+let contactPreloadS16Stream = null;
 let viewportMode = "desktop";
 let projectPopoverExpanded = false;
 
@@ -1340,6 +1342,7 @@ function hideLoader() {
 
 function startLoadingAnimation() {
   const stream = ensureIntroStream();
+  const contactStreams = ensureContactPreloadStreams();
   const minVisibleUntil = performance.now() + 1300;
   const maxWaitUntil = performance.now() + 18000;
   let displayedProgress = 0;
@@ -1360,9 +1363,18 @@ function startLoadingAnimation() {
   stream.preloadRange(0, introTotalFrames);
   stream.setTarget(0, performance.now());
   stream.draw(0);
+  contactStreams.forEach(({ stream: contactStream, totalFrames }) => {
+    contactStream.retainLoadedFrames();
+    contactStream.preloadRange(0, totalFrames);
+    contactStream.setTarget(0, performance.now());
+  });
 
   const tick = () => {
-    stream.processQueue(performance.now(), true);
+    const now = performance.now();
+    stream.processQueue(now, true);
+    contactStreams.forEach(({ stream: contactStream }) => {
+      contactStream.processQueue(now, true);
+    });
     const loaded = stream.countLoadedInRange(0, introTotalFrames);
     setProgress((loaded / introTotalFrames) * 100);
 
@@ -1524,7 +1536,8 @@ if (enterSilentButton) {
 }
 
 function createSceneFrameStream({ basePath, totalFrames, canvas, sceneKey = "" }) {
-  const ctx = canvas.getContext("2d");
+  let activeCanvas = canvas;
+  let ctx = activeCanvas.getContext("2d");
   const cache = new Map();
   const loading = new Map();
   let lastDrawnIndex = 0;
@@ -1543,8 +1556,8 @@ function createSceneFrameStream({ basePath, totalFrames, canvas, sceneKey = "" }
   const throttleMs = 16;
 
   function drawCoverImage(img) {
-    const canvasWidth = canvas.width;
-    const canvasHeight = canvas.height;
+    const canvasWidth = activeCanvas.width;
+    const canvasHeight = activeCanvas.height;
     const imageWidth = img.naturalWidth || img.width;
     const imageHeight = img.naturalHeight || img.height;
 
@@ -1714,8 +1727,8 @@ function createSceneFrameStream({ basePath, totalFrames, canvas, sceneKey = "" }
   }
 
   function resizeToViewport() {
-    canvas.width = window.innerWidth;
-    canvas.height = window.innerHeight;
+    activeCanvas.width = window.innerWidth;
+    activeCanvas.height = window.innerHeight;
     lastPaintedIndex = null;
     lastRequestedIndex = null;
     draw(lastDrawnIndex);
@@ -1728,12 +1741,19 @@ function createSceneFrameStream({ basePath, totalFrames, canvas, sceneKey = "" }
   }
 
   function isVisible() {
-    if (!canvas.isConnected) return false;
+    if (!activeCanvas.isConnected) return false;
     if (sceneKey === "intro") {
-      return introScrollActive || canvas.offsetParent !== null;
+      return introScrollActive || activeCanvas.offsetParent !== null;
     }
-    const opacity = Number.parseFloat(canvas.style.opacity || window.getComputedStyle(canvas).opacity || "1");
+    const opacity = Number.parseFloat(activeCanvas.style.opacity || window.getComputedStyle(activeCanvas).opacity || "1");
     return opacity > 0.01;
+  }
+
+  function attachCanvas(nextCanvas) {
+    if (!nextCanvas || nextCanvas === activeCanvas) return;
+    activeCanvas = nextCanvas;
+    ctx = activeCanvas.getContext("2d");
+    resizeToViewport();
   }
 
   function prime(index = 0) {
@@ -1789,6 +1809,10 @@ function createSceneFrameStream({ basePath, totalFrames, canvas, sceneKey = "" }
 
   const stream = {
     cache,
+    get canvas() {
+      return activeCanvas;
+    },
+    attachCanvas,
     clear,
     draw,
     prime,
@@ -1823,6 +1847,46 @@ function ensureIntroStream() {
     sceneKey: "intro",
   });
   return introStream;
+}
+
+function createPreloadCanvas() {
+  const canvas = document.createElement("canvas");
+  canvas.width = 1;
+  canvas.height = 1;
+  canvas.style.position = "fixed";
+  canvas.style.width = "1px";
+  canvas.style.height = "1px";
+  canvas.style.opacity = "0";
+  canvas.style.pointerEvents = "none";
+  canvas.style.visibility = "hidden";
+  canvas.style.left = "-10px";
+  canvas.style.top = "-10px";
+  canvas.setAttribute("aria-hidden", "true");
+  document.body.appendChild(canvas);
+  return canvas;
+}
+
+function ensureContactPreloadStreams() {
+  if (!contactPreloadS15Stream) {
+    contactPreloadS15Stream = createSceneFrameStream({
+      basePath: "./assets/scene15-frames-1600",
+      totalFrames: 289,
+      canvas: createPreloadCanvas(),
+      sceneKey: "s15",
+    });
+  }
+  if (!contactPreloadS16Stream) {
+    contactPreloadS16Stream = createSceneFrameStream({
+      basePath: "./assets/scene16-frames-1600",
+      totalFrames: 121,
+      canvas: createPreloadCanvas(),
+      sceneKey: "s16",
+    });
+  }
+  return [
+    { stream: contactPreloadS15Stream, totalFrames: 289 },
+    { stream: contactPreloadS16Stream, totalFrames: 121 },
+  ];
 }
 
 function prepareIntroScrollMode() {
@@ -2343,7 +2407,10 @@ function beginScrollJourney() {
 
   function ensureS15Stream() {
     if (!s15Initialized) {
-      s15Stream = createSceneFrameStream({ basePath: "./assets/scene15-frames-1600", totalFrames: 289, canvas: s15Canvas, sceneKey: "s15" });
+      s15Stream = contactPreloadS15Stream || createSceneFrameStream({ basePath: "./assets/scene15-frames-1600", totalFrames: 289, canvas: s15Canvas, sceneKey: "s15" });
+      if (s15Stream.canvas !== s15Canvas && typeof s15Stream.attachCanvas === "function") {
+        s15Stream.attachCanvas(s15Canvas);
+      }
       s15Initialized = true;
     }
     return s15Stream;
@@ -2351,7 +2418,10 @@ function beginScrollJourney() {
 
   function ensureS16Stream() {
     if (!s16Initialized) {
-      s16Stream = createSceneFrameStream({ basePath: "./assets/scene16-frames-1600", totalFrames: 121, canvas: s16Canvas, sceneKey: "s16" });
+      s16Stream = contactPreloadS16Stream || createSceneFrameStream({ basePath: "./assets/scene16-frames-1600", totalFrames: 121, canvas: s16Canvas, sceneKey: "s16" });
+      if (s16Stream.canvas !== s16Canvas && typeof s16Stream.attachCanvas === "function") {
+        s16Stream.attachCanvas(s16Canvas);
+      }
       s16Initialized = true;
     }
     return s16Stream;
