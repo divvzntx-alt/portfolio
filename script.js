@@ -3389,26 +3389,6 @@ function beginScrollJourney() {
     contact:  { scrollPos: s15Start + 1, content: thresholdSceneContent.s15, sceneKey: "s15", ensureStream: ensureS15Stream },
   };
 
-  function scheduleRailDestinationWarmup() {
-    const warmups = [
-      { getStream: () => s3Stream, frameCount: 96 },
-      { getStream: () => ensureS6Stream(), frameCount: 96 },
-      { getStream: () => ensureS8Stream(), frameCount: 96 },
-      { getStream: () => ensureS10Stream(), frameCount: 96 },
-      { getStream: () => ensureS13Stream(), frameCount: 96 },
-    ];
-
-    warmups.forEach((warmup, index) => {
-      window.setTimeout(() => {
-        const stream = warmup.getStream();
-        if (!stream || stream._railWarmed) return;
-        stream.preloadRange(0, warmup.frameCount);
-        stream.setTarget(0, performance.now());
-        stream._railWarmed = true;
-      }, 2200 + index * 1400);
-    });
-  }
-
   journeyChromeGlyphs.forEach((btn) => {
     btn.addEventListener("click", () => {
       const project = btn.dataset.project;
@@ -3484,7 +3464,6 @@ function beginScrollJourney() {
   s2Stream.draw(0);
   journeyFrameCallback = masterLoop;
   ensureVisualLoop();
-  scheduleRailDestinationWarmup();
 }
 
 /* ── World Overlay ───────────────────────────────────────── */
