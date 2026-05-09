@@ -1702,6 +1702,9 @@ function createSceneFrameStream({ basePath, totalFrames, canvas, sceneKey = "" }
     loading.clear();
     warmRange = null;
     retainFullCache = false;
+    if (stream) {
+      stream._warmed = false;
+    }
     lastPaintedIndex = null;
     lastRequestedIndex = null;
     if (keep) {
@@ -3216,8 +3219,6 @@ function beginScrollJourney() {
         s11Stream.clear(0);
         s12Stream.clear(0);
         s13Stream.clear(Math.max(0, Math.round(s13Frame)));
-        s15Stream.clear(0);
-        s16Stream.clear(0);
       }
       const scrolled = scrollTop - s14Start;
       const progress = Math.min(scrolled / s14ScrollRange, 1);
@@ -3257,7 +3258,6 @@ function beginScrollJourney() {
         s12Stream.clear(0);
         s13Stream.clear(0);
         s14Stream.clear(Math.max(0, Math.round(s14Frame)));
-        s16Stream.clear(0);
       }
       const scrolled = scrollTop - s15Start;
       const progress = Math.min(scrolled / s15ScrollRange, 1);
