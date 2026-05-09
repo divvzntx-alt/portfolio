@@ -3396,7 +3396,7 @@ function beginScrollJourney() {
       case "s6":
         return [{ stream: ensureS6Stream(), count: 80 }];
       case "s8":
-        return [{ stream: ensureS8Stream(), count: 80 }];
+        return [{ stream: ensureS8Stream(), count: 140 }];
       case "s10":
         return [{ stream: ensureS10Stream(), count: 80 }];
       case "s13":
