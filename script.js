@@ -3784,30 +3784,10 @@ function showProjectPopover(sceneKey, onDismiss, options = {}) {
     const dismissOnScroll = () => dismiss();
     const startScrollHold = () => {
       if (dismissed) return;
-      if (holdDuration <= 0) {
-        window.setTimeout(() => {
-          if (!dismissed) scrollDismissEnabled = true;
-        }, 300);
-        return;
-      }
-      if (journey) {
-        journey.addEventListener("wheel", blockScroll, { passive: false });
-        journey.addEventListener("touchmove", blockScroll, { passive: false });
-      }
-      window.addEventListener("wheel", blockScroll, { passive: false });
-      window.addEventListener("touchmove", blockScroll, { passive: false });
-      window.addEventListener("keydown", blockKeyScroll);
       window.setTimeout(() => {
         if (dismissed) return;
         scrollDismissEnabled = true;
-        if (journey) {
-          journey.removeEventListener("wheel", blockScroll);
-          journey.removeEventListener("touchmove", blockScroll);
-        }
-        window.removeEventListener("wheel", blockScroll);
-        window.removeEventListener("touchmove", blockScroll);
-        window.removeEventListener("keydown", blockKeyScroll);
-      }, holdDuration);
+      }, holdDuration > 0 ? holdDuration : 300);
     };
     guardedDismissOnScroll = () => {
       if (!scrollDismissEnabled) return;
