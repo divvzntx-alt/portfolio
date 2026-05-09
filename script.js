@@ -1532,6 +1532,7 @@ function createSceneFrameStream({ basePath, totalFrames, canvas, sceneKey = "" }
   let lastRequestedIndex = null;
   let desiredIndex = 0;
   let warmRange = null;
+  let retainFullCache = false;
   let lastQueueRun = 0;
   let paused = document.visibilityState === "hidden";
   const resolvedBasePath = resolveFrameBasePath(basePath);
@@ -1620,7 +1621,7 @@ function createSceneFrameStream({ basePath, totalFrames, canvas, sceneKey = "" }
 
   function syncCacheWindow(center) {
     desiredIndex = Math.max(0, Math.min(totalFrames - 1, Math.round(center)));
-    if (sceneKey === "intro" && introFramesReadyBeforeSequence) {
+    if ((sceneKey === "intro" && introFramesReadyBeforeSequence) || retainFullCache) {
       return;
     }
 
@@ -1700,6 +1701,7 @@ function createSceneFrameStream({ basePath, totalFrames, canvas, sceneKey = "" }
     cache.clear();
     loading.clear();
     warmRange = null;
+    retainFullCache = false;
     lastPaintedIndex = null;
     lastRequestedIndex = null;
     if (keep) {
@@ -1754,6 +1756,10 @@ function createSceneFrameStream({ basePath, totalFrames, canvas, sceneKey = "" }
     return loaded;
   }
 
+  function retainLoadedFrames() {
+    retainFullCache = true;
+  }
+
   function getDebugState(targetIndex = desiredIndex) {
     const clampedIndex = Math.max(0, Math.min(totalFrames - 1, Math.round(targetIndex)));
     return {
@@ -1766,6 +1772,7 @@ function createSceneFrameStream({ basePath, totalFrames, canvas, sceneKey = "" }
       hasTarget: cache.has(clampedIndex),
       isTargetLoading: loading.has(clampedIndex),
       visible: isVisible(),
+      retainFullCache,
       warmRange,
     };
   }
@@ -1784,6 +1791,7 @@ function createSceneFrameStream({ basePath, totalFrames, canvas, sceneKey = "" }
     prime,
     preloadRange,
     countLoadedInRange,
+    retainLoadedFrames,
     processQueue,
     redraw,
     resizeToViewport,
@@ -2647,10 +2655,13 @@ function beginScrollJourney() {
     stream.setTarget(targetFrame, now);
   }
 
-  function warmStreamOnApproach(scrollTop, start, getStream, now, distance = 800, frameCount = 30) {
+  function warmStreamOnApproach(scrollTop, start, getStream, now, distance = 800, frameCount = 30, retainFullRange = false) {
     if (scrollTop <= start - distance) return;
     const stream = getStream();
     if (!stream || stream._warmed) return;
+    if (retainFullRange && typeof stream.retainLoadedFrames === "function") {
+      stream.retainLoadedFrames();
+    }
     stream.preloadRange(0, frameCount);
     stream.setTarget(0, now);
     stream._warmed = true;
@@ -2669,8 +2680,8 @@ function beginScrollJourney() {
     warmStreamOnApproach(scrollTop, s12Start, () => ensureS12Stream(), now);
     warmStreamOnApproach(scrollTop, s13Start, () => ensureS13Stream(), now);
     warmStreamOnApproach(scrollTop, s14Start, () => ensureS14Stream(), now);
-    warmStreamOnApproach(scrollTop, s15Start, () => ensureS15Stream(), now, 1600, 60);
-    warmStreamOnApproach(scrollTop, s16Start, () => ensureS16Stream(), now, 1800, 60);
+    warmStreamOnApproach(scrollTop, s15Start, () => ensureS15Stream(), now, 4800, 289, true);
+    warmStreamOnApproach(scrollTop, s16Start, () => ensureS16Stream(), now, 4200, 121, true);
   }
 
   function masterLoop(now) {
