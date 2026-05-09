@@ -766,7 +766,7 @@ let introScrollTransitioning = false;
 let introTotalFrames = 241;
 let introStream = null;
 let introScrollUnlockAt = 0;
-let introScrollMaxWaitAt = 0;
+let introScrollSafetyWaitUntil = 0;
 let introFramesReadyBeforeSequence = false;
 let contactPreloadS15Stream = null;
 let contactPreloadS16Stream = null;
@@ -1951,7 +1951,7 @@ function ensureContactPreloadStreams() {
 function prepareIntroScrollMode() {
   const now = performance.now();
   introScrollUnlockAt = now;
-  introScrollMaxWaitAt = introFramesReadyBeforeSequence ? now : now + 8000;
+  introScrollSafetyWaitUntil = now + 650;
   document.body.classList.add("is-video-surfacing", "is-intro-frame-ready");
   const stream = ensureIntroStream();
   if (stream) {
@@ -1973,11 +1973,11 @@ function activateIntroScrollMode() {
     ? stream.countLoadedInRange(0, introTotalFrames)
     : 0;
   const waitingForMinimumHold = now < introScrollUnlockAt;
-  const waitingForFrames = loadedIntroFrames < 220 && now < introScrollMaxWaitAt;
-  if (waitingForMinimumHold || waitingForFrames) {
+  const waitingForFirstFrame = loadedIntroFrames < 1 && now < introScrollSafetyWaitUntil;
+  if (waitingForMinimumHold || waitingForFirstFrame) {
     const nextCheckDelay = waitingForMinimumHold
       ? Math.max(80, introScrollUnlockAt - now)
-      : 160;
+      : 80;
     window.setTimeout(activateIntroScrollMode, nextCheckDelay);
     return;
   }
