@@ -100,12 +100,17 @@ let soundStartRetryTimers = [];
 const soundWavePaths = Array.from(document.querySelectorAll(".sound-wave__motion"));
 const sceneFrameStreams = [];
 const FRAME_BASE_URL = typeof window.FRAME_BASE_URL === "string" ? window.FRAME_BASE_URL.trim() : "";
-const DEBUG_SCROLL_HOLDS = true;
-const DEBUG_INTRO_SCROLL = true;
+const DEBUG_SCROLL_DIAGNOSTICS = new URLSearchParams(window.location.search).has("debugScroll");
+const DEBUG_SCROLL_HOLDS = DEBUG_SCROLL_DIAGNOSTICS;
+const DEBUG_INTRO_SCROLL = DEBUG_SCROLL_DIAGNOSTICS;
+let scrollDebugOverlay = null;
+let lastScrollDebugUpdate = 0;
+let lastScrollDebugHold = "none";
 let lastIntroDebugLog = 0;
 
 function debugScrollHold(source, event) {
   if (!DEBUG_SCROLL_HOLDS) return;
+  lastScrollDebugHold = `${source} ${event?.type || ""}`.trim();
   console.info("[scroll-hold]", source, event?.type || "unknown", {
     scrollY: window.scrollY,
     target: event?.target?.id || event?.target?.className || event?.target?.tagName || "",
@@ -118,6 +123,44 @@ function debugIntroScroll(source, data = {}, throttleMs = 0) {
   if (throttleMs > 0 && now - lastIntroDebugLog < throttleMs) return;
   lastIntroDebugLog = now;
   console.info("[intro-scroll]", source, data);
+}
+
+function updateScrollDebugOverlay(data = {}) {
+  if (!DEBUG_SCROLL_DIAGNOSTICS) return;
+  const now = performance.now();
+  if (now - lastScrollDebugUpdate < 180) return;
+  lastScrollDebugUpdate = now;
+  if (!scrollDebugOverlay) {
+    scrollDebugOverlay = document.createElement("div");
+    scrollDebugOverlay.style.cssText = [
+      "position:fixed",
+      "left:12px",
+      "bottom:12px",
+      "z-index:2147483647",
+      "max-width:min(420px, calc(100vw - 24px))",
+      "padding:10px 12px",
+      "background:rgba(3, 8, 14, 0.84)",
+      "color:#dff4ff",
+      "font:11px/1.45 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace",
+      "border:1px solid rgba(176, 225, 255, 0.35)",
+      "border-radius:6px",
+      "pointer-events:none",
+      "white-space:pre-wrap",
+    ].join(";");
+    document.body.appendChild(scrollDebugOverlay);
+  }
+  const frameState = data.stream && typeof data.stream.getDebugState === "function"
+    ? data.stream.getDebugState(data.frame)
+    : null;
+  scrollDebugOverlay.textContent = [
+    `scene: ${data.scene || "n/a"} frame: ${Math.round(data.frame ?? 0)}`,
+    `target loaded: ${frameState ? frameState.hasTarget : "n/a"} loading: ${frameState ? frameState.isTargetLoading : "n/a"}`,
+    `cache/loading: ${frameState ? `${frameState.cacheSize}/${frameState.loadingSize}` : "n/a"}`,
+    `threshold active: ${thresholdTransition?.classList.contains("is-active") ? "yes" : "no"}`,
+    `popover: ${projectPopover?.getAttribute("aria-hidden") === "false" ? "open" : "closed"}`,
+    `last hold: ${lastScrollDebugHold}`,
+    `scrollTop: ${Math.round(data.scrollTop ?? 0)}`,
+  ].join("\n");
 }
 
 function normalizeFrameBaseUrl(url) {
@@ -3058,6 +3101,7 @@ function beginScrollJourney() {
       s8Frame += (targetFrame - s8Frame) * 0.08;
       s8Stream.setTarget(Math.round(s8Frame), now);
       s8Stream.draw(Math.round(s8Frame));
+      updateScrollDebugOverlay({ scene: "s8", frame: s8Frame, stream: s8Stream, scrollTop });
     } else if (scrollTop < s10Start) {
       if (activeScene !== "s9") {
         activeScene = "s9";
@@ -3098,6 +3142,7 @@ function beginScrollJourney() {
       s9Frame += (targetFrame - s9Frame) * 0.08;
       s9Stream.setTarget(Math.round(s9Frame), now);
       s9Stream.draw(Math.round(s9Frame));
+      updateScrollDebugOverlay({ scene: "s9", frame: s9Frame, stream: s9Stream, scrollTop });
     } else if (scrollTop < s11Start) {
       if (activeScene !== "s10") {
         activeScene = "s10";
@@ -3138,6 +3183,7 @@ function beginScrollJourney() {
       s10Frame += (targetFrame - s10Frame) * 0.08;
       s10Stream.setTarget(Math.round(s10Frame), now);
       s10Stream.draw(Math.round(s10Frame));
+      updateScrollDebugOverlay({ scene: "s10", frame: s10Frame, stream: s10Stream, scrollTop });
     } else if (scrollTop < s12Start) {
       if (activeScene !== "s11") {
         activeScene = "s11";
@@ -3178,6 +3224,7 @@ function beginScrollJourney() {
       s11Frame += (targetFrame - s11Frame) * 0.08;
       s11Stream.setTarget(Math.round(s11Frame), now);
       s11Stream.draw(Math.round(s11Frame));
+      updateScrollDebugOverlay({ scene: "s11", frame: s11Frame, stream: s11Stream, scrollTop });
     } else if (scrollTop < s13Start) {
       if (activeScene !== "s12") {
         activeScene = "s12";
@@ -3218,6 +3265,7 @@ function beginScrollJourney() {
       s12Frame += (targetFrame - s12Frame) * 0.08;
       s12Stream.setTarget(Math.round(s12Frame), now);
       s12Stream.draw(Math.round(s12Frame));
+      updateScrollDebugOverlay({ scene: "s12", frame: s12Frame, stream: s12Stream, scrollTop });
     } else if (scrollTop < s14Start) {
       if (activeScene !== "s13") {
         activeScene = "s13";
@@ -3258,6 +3306,7 @@ function beginScrollJourney() {
       s13Frame += (targetFrame - s13Frame) * 0.08;
       s13Stream.setTarget(Math.round(s13Frame), now);
       s13Stream.draw(Math.round(s13Frame));
+      updateScrollDebugOverlay({ scene: "s13", frame: s13Frame, stream: s13Stream, scrollTop });
     } else if (scrollTop < s15Start) {
       if (activeScene !== "s14") {
         activeScene = "s14";
