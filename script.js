@@ -152,7 +152,14 @@ function updateScrollDebugOverlay(data = {}) {
   const frameState = data.stream && typeof data.stream.getDebugState === "function"
     ? data.stream.getDebugState(data.frame)
     : null;
+  const hasScrollHold = lastScrollDebugHold !== "none";
+  const status = hasScrollHold
+    ? "SCROLL HELD"
+    : frameState && !frameState.hasTarget
+      ? "FRAME MISSING"
+      : "OK";
   scrollDebugOverlay.textContent = [
+    `status: ${status}`,
     `scene: ${data.scene || "n/a"} frame: ${Math.round(data.frame ?? 0)}`,
     `target loaded: ${frameState ? frameState.hasTarget : "n/a"} loading: ${frameState ? frameState.isTargetLoading : "n/a"}`,
     `cache/loading: ${frameState ? `${frameState.cacheSize}/${frameState.loadingSize}` : "n/a"}`,
@@ -2950,6 +2957,7 @@ function beginScrollJourney() {
       s4Frame += (targetFrame - s4Frame) * 0.08;
       s4Stream.setTarget(Math.round(s4Frame), now);
       s4Stream.draw(Math.round(s4Frame));
+      updateScrollDebugOverlay({ scene: "s4", frame: s4Frame, stream: s4Stream, scrollTop });
     } else if (scrollTop < s6Start) {
       if (activeScene !== "s5") {
         activeScene = "s5";
@@ -2990,6 +2998,7 @@ function beginScrollJourney() {
       s5Frame += (targetFrame - s5Frame) * 0.08;
       s5Stream.setTarget(Math.round(s5Frame), now);
       s5Stream.draw(Math.round(s5Frame));
+      updateScrollDebugOverlay({ scene: "s5", frame: s5Frame, stream: s5Stream, scrollTop });
     } else if (scrollTop < s7Start) {
       if (activeScene !== "s6") {
         activeScene = "s6";
@@ -3030,6 +3039,7 @@ function beginScrollJourney() {
       s6Frame += (targetFrame - s6Frame) * 0.08;
       s6Stream.setTarget(Math.round(s6Frame), now);
       s6Stream.draw(Math.round(s6Frame));
+      updateScrollDebugOverlay({ scene: "s6", frame: s6Frame, stream: s6Stream, scrollTop });
     } else if (scrollTop < s8Start) {
       if (activeScene !== "s7") {
         activeScene = "s7";
