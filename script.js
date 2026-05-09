@@ -104,7 +104,7 @@ const DEBUG_SCROLL_DIAGNOSTICS = new URLSearchParams(window.location.search).has
 const DEBUG_SCROLL_HOLDS = DEBUG_SCROLL_DIAGNOSTICS;
 const DEBUG_INTRO_SCROLL = DEBUG_SCROLL_DIAGNOSTICS;
 let scrollDebugOverlay = null;
-let lastScrollDebugUpdate = 0;
+let lastScrollDebugUpdate = -Infinity;
 let lastScrollDebugHold = "none";
 let lastIntroDebugLog = 0;
 
@@ -161,6 +161,15 @@ function updateScrollDebugOverlay(data = {}) {
     `last hold: ${lastScrollDebugHold}`,
     `scrollTop: ${Math.round(data.scrollTop ?? 0)}`,
   ].join("\n");
+}
+
+if (DEBUG_SCROLL_DIAGNOSTICS) {
+  window.requestAnimationFrame(() => {
+    updateScrollDebugOverlay({
+      scene: "debug-ready",
+      scrollTop: scrollJourney?.scrollTop || 0,
+    });
+  });
 }
 
 function normalizeFrameBaseUrl(url) {
