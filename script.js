@@ -2394,6 +2394,7 @@ function beginScrollJourney() {
   let activeProjectPopoverShownAt = 0;
   let activeProjectPopoverShownScrollTop = 0;
   let activeThresholdTitleOwnerScene = null;
+  let railJumpInProgress = false;
   if (typeof window !== "undefined" && window.__scene2ThresholdSeen) {
     sceneTitleShown.add("s2");
   }
@@ -3319,11 +3320,75 @@ function beginScrollJourney() {
     contact:  { scrollPos: s15Start + 1, content: thresholdSceneContent.s15, sceneKey: "s15", ensureStream: ensureS15Stream },
   };
 
+  function getRailPreloadItems(sceneKey) {
+    switch (sceneKey) {
+      case "s2":
+        return [{ stream: s3Stream, count: 289 }];
+      case "s6":
+        return [{ stream: ensureS6Stream(), count: 241 }];
+      case "s8":
+        return [{ stream: ensureS8Stream(), count: 241 }];
+      case "s10":
+        return [{ stream: ensureS10Stream(), count: 241 }];
+      case "s13":
+        return [{ stream: ensureS13Stream(), count: 241 }];
+      case "s15":
+        return [
+          { stream: ensureS15Stream(), count: 289 },
+          { stream: ensureS16Stream(), count: 121 },
+        ];
+      default:
+        return [];
+    }
+  }
+
+  function preloadRailTargetFrames(sceneKey) {
+    const items = getRailPreloadItems(sceneKey).filter((item) => item.stream);
+    if (!items.length) return Promise.resolve();
+
+    const startedAt = performance.now();
+    const minWait = 1100;
+    const maxWait = sceneKey === "s15" ? 4600 : 3800;
+
+    items.forEach(({ stream, count }) => {
+      if (typeof stream.retainLoadedFrames === "function") {
+        stream.retainLoadedFrames();
+      }
+      stream.preloadRange(0, count);
+      stream.setTarget(0, startedAt);
+    });
+
+    return new Promise((resolve) => {
+      const tick = () => {
+        const now = performance.now();
+        let ready = true;
+
+        items.forEach(({ stream, count }) => {
+          stream.processQueue(now, true);
+          if (typeof stream.countLoadedInRange === "function" && stream.countLoadedInRange(0, count) < count) {
+            ready = false;
+          }
+        });
+
+        const elapsed = now - startedAt;
+        if ((ready && elapsed >= minWait) || elapsed >= maxWait) {
+          resolve();
+          return;
+        }
+
+        window.setTimeout(tick, 80);
+      };
+
+      tick();
+    });
+  }
+
   journeyChromeGlyphs.forEach((btn) => {
-    btn.addEventListener("click", () => {
+    btn.addEventListener("click", async () => {
       const project = btn.dataset.project;
       const target = railTargetByProject[project];
-      if (!target) return;
+      if (!target || railJumpInProgress) return;
+      railJumpInProgress = true;
 
       if (typeof window.__dismissProjectPopover === "function") {
         window.__dismissProjectPopover();
@@ -3365,6 +3430,12 @@ function beginScrollJourney() {
       thresholdTransition.style.visibility = "visible";
       darkOverlay.style.opacity = "1";
 
+      if (thresholdController && typeof thresholdController.runFlowTitle === "function") {
+        thresholdController.runFlowTitle(target.content);
+      }
+
+      await preloadRailTargetFrames(target.sceneKey);
+
       railJumpTime = performance.now();
       journey.scrollTop = target.scrollPos;
       lastScrollTop = target.scrollPos;
@@ -3383,11 +3454,7 @@ function beginScrollJourney() {
         scene3TitleTriggered = true;
       }
 
-      requestAnimationFrame(() => {
-        if (thresholdController && typeof thresholdController.runFlowTitle === "function") {
-          thresholdController.runFlowTitle(target.content);
-        }
-      });
+      railJumpInProgress = false;
     });
   });
 
