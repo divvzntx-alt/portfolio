@@ -2815,27 +2815,31 @@ function beginScrollJourney() {
   }
 
   function createProjectHoldReadiness(sceneKey) {
+    const useTouchReadiness = viewportMode === "mobile" || viewportMode === "tablet";
     const readinessMap = {
-      s4: { getStream: ensureS6Stream, readyCount: 36, warmCount: 120 },
-      s7: { getStream: ensureS8Stream, readyCount: 36, warmCount: 120 },
-      s9: { getStream: ensureS10Stream, readyCount: 36, warmCount: 120 },
-      s11: { getStream: ensureS13Stream, readyCount: 36, warmCount: 120 },
-      s14: { getStream: ensureS15Stream, readyCount: 48, warmCount: 160 },
+      s4: { getStream: ensureS6Stream, touchReadyCount: 36, count: 120 },
+      s7: { getStream: ensureS8Stream, touchReadyCount: 36, count: 120 },
+      s9: { getStream: ensureS10Stream, touchReadyCount: 36, count: 120 },
+      s11: { getStream: ensureS13Stream, touchReadyCount: 36, count: 120 },
+      s14: { getStream: ensureS15Stream, touchReadyCount: 48, count: 160 },
     };
     const target = readinessMap[sceneKey];
     if (!target) return null;
     const stream = target.getStream();
     if (!stream) return null;
-    if (typeof stream.retainLoadedFrames === "function") {
+    if (useTouchReadiness && typeof stream.retainLoadedFrames === "function") {
       stream.retainLoadedFrames();
     }
+    const readyCount = useTouchReadiness
+      ? target.touchReadyCount
+      : Math.min(target.count, Math.ceil(target.count * 0.88));
 
     return () => {
       const now = performance.now();
-      stream.preloadRange(0, target.warmCount);
+      stream.preloadRange(0, target.count);
       stream.setTarget(0, now);
       stream.processQueue(now, true);
-      return stream.countLoadedInRange(0, target.readyCount) >= target.readyCount;
+      return stream.countLoadedInRange(0, useTouchReadiness ? readyCount : target.count) >= readyCount;
     };
   }
 
@@ -2893,7 +2897,7 @@ function beginScrollJourney() {
       scrollDismiss: !isReverse,
       holdDuration,
       holdUntilReady: isReverse ? null : createProjectHoldReadiness(sceneKey),
-      maxHoldDuration: isReverse ? holdDuration : Number.POSITIVE_INFINITY,
+      maxHoldDuration: isReverse || viewportMode === "desktop" ? (isReverse ? holdDuration : 5200) : Number.POSITIVE_INFINITY,
       autoDismissAfter: 0,
       entranceDelay: 0,
       entranceDuration: firstTime ? 360 : 280,
