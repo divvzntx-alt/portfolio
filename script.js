@@ -2790,11 +2790,11 @@ function beginScrollJourney() {
   function warmFramesDuringProjectHold(sceneKey, holdDuration) {
     if (holdDuration <= 0) return;
     const warmMap = {
-      s4: { getStream: ensureS6Stream, scene: "s6", count: 120 },
-      s7: { getStream: ensureS8Stream, scene: "s8", count: 120 },
-      s9: { getStream: ensureS10Stream, scene: "s10", count: 120 },
-      s11: { getStream: ensureS13Stream, scene: "s13", count: 120 },
-      s14: { getStream: ensureS15Stream, scene: "s15", count: 160 },
+      s4: { getStream: ensureS6Stream, scene: "s6", count: 60 },
+      s7: { getStream: ensureS8Stream, scene: "s8", count: 60 },
+      s9: { getStream: ensureS10Stream, scene: "s10", count: 60 },
+      s11: { getStream: ensureS13Stream, scene: "s13", count: 60 },
+      s14: { getStream: ensureS15Stream, scene: "s15", count: 90 },
     };
     const target = warmMap[sceneKey];
     if (!target) return;
@@ -2816,11 +2816,11 @@ function beginScrollJourney() {
 
   function createProjectHoldReadiness(sceneKey) {
     const readinessMap = {
-      s4: { getStream: ensureS6Stream, count: 120 },
-      s7: { getStream: ensureS8Stream, count: 120 },
-      s9: { getStream: ensureS10Stream, count: 120 },
-      s11: { getStream: ensureS13Stream, count: 120 },
-      s14: { getStream: ensureS15Stream, count: 160 },
+      s4: { getStream: ensureS6Stream, count: 60 },
+      s7: { getStream: ensureS8Stream, count: 60 },
+      s9: { getStream: ensureS10Stream, count: 60 },
+      s11: { getStream: ensureS13Stream, count: 60 },
+      s14: { getStream: ensureS15Stream, count: 90 },
     };
     const target = readinessMap[sceneKey];
     if (!target) return null;
@@ -4058,7 +4058,6 @@ function showProjectPopover(sceneKey, onDismiss, options = {}) {
         journey.addEventListener("wheel", blockScroll, { passive: false });
         journey.addEventListener("touchmove", blockScroll, { passive: false });
       }
-      projectPopover.addEventListener("touchmove", blockScroll, { passive: false, capture: true });
       window.addEventListener("wheel", blockScroll, { passive: false });
       window.addEventListener("touchmove", blockScroll, { passive: false });
       window.addEventListener("keydown", blockKeyScroll);
@@ -4081,7 +4080,6 @@ function showProjectPopover(sceneKey, onDismiss, options = {}) {
           journey.removeEventListener("wheel", blockScroll);
           journey.removeEventListener("touchmove", blockScroll);
         }
-        projectPopover.removeEventListener("touchmove", blockScroll, true);
         window.removeEventListener("wheel", blockScroll);
         window.removeEventListener("touchmove", blockScroll);
         window.removeEventListener("keydown", blockKeyScroll);
