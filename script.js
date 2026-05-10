@@ -2790,11 +2790,11 @@ function beginScrollJourney() {
   function warmFramesDuringProjectHold(sceneKey, holdDuration) {
     if (holdDuration <= 0) return;
     const warmMap = {
-      s4: { getStream: ensureS6Stream, scene: "s6", count: 60 },
-      s7: { getStream: ensureS8Stream, scene: "s8", count: 60 },
-      s9: { getStream: ensureS10Stream, scene: "s10", count: 60 },
-      s11: { getStream: ensureS13Stream, scene: "s13", count: 60 },
-      s14: { getStream: ensureS15Stream, scene: "s15", count: 90 },
+      s4: { getStream: ensureS6Stream, scene: "s6", warmCount: 120 },
+      s7: { getStream: ensureS8Stream, scene: "s8", warmCount: 120 },
+      s9: { getStream: ensureS10Stream, scene: "s10", warmCount: 120 },
+      s11: { getStream: ensureS13Stream, scene: "s13", warmCount: 120 },
+      s14: { getStream: ensureS15Stream, scene: "s15", warmCount: 160 },
     };
     const target = warmMap[sceneKey];
     if (!target) return;
@@ -2803,7 +2803,7 @@ function beginScrollJourney() {
     const stream = target.getStream();
     const tick = () => {
       const now = performance.now();
-      stream.preloadRange(0, target.count);
+      stream.preloadRange(0, target.warmCount);
       stream.setTarget(0, now);
       stream.processQueue(now, true);
       if (now - startedAt < holdDuration) {
@@ -2816,11 +2816,11 @@ function beginScrollJourney() {
 
   function createProjectHoldReadiness(sceneKey) {
     const readinessMap = {
-      s4: { getStream: ensureS6Stream, count: 60 },
-      s7: { getStream: ensureS8Stream, count: 60 },
-      s9: { getStream: ensureS10Stream, count: 60 },
-      s11: { getStream: ensureS13Stream, count: 60 },
-      s14: { getStream: ensureS15Stream, count: 90 },
+      s4: { getStream: ensureS6Stream, readyCount: 36, warmCount: 120 },
+      s7: { getStream: ensureS8Stream, readyCount: 36, warmCount: 120 },
+      s9: { getStream: ensureS10Stream, readyCount: 36, warmCount: 120 },
+      s11: { getStream: ensureS13Stream, readyCount: 36, warmCount: 120 },
+      s14: { getStream: ensureS15Stream, readyCount: 48, warmCount: 160 },
     };
     const target = readinessMap[sceneKey];
     if (!target) return null;
@@ -2832,10 +2832,10 @@ function beginScrollJourney() {
 
     return () => {
       const now = performance.now();
-      stream.preloadRange(0, target.count);
+      stream.preloadRange(0, target.warmCount);
       stream.setTarget(0, now);
       stream.processQueue(now, true);
-      return stream.countLoadedInRange(0, target.count) >= target.count;
+      return stream.countLoadedInRange(0, target.readyCount) >= target.readyCount;
     };
   }
 
