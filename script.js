@@ -202,17 +202,6 @@ function resolveFrameBasePath(localBasePath) {
   return `${remoteBaseUrl}${frameFolder}`;
 }
 
-function getResponsiveFrameBasePath(basePath) {
-  if (viewportMode === "desktop") return basePath;
-
-  const suffix = viewportMode === "mobile" ? "-960" : "-1280";
-  if (basePath.includes("palace-intro-frames")) {
-    return basePath.replace("palace-intro-frames", `palace-intro-frames${suffix}`);
-  }
-
-  return basePath.replace(/-frames(?:-1600)?$/, `-frames${suffix}`);
-}
-
 if (siteMusic) {
   siteMusic.volume = 0;
 }
@@ -1663,7 +1652,7 @@ function createSceneFrameStream({ basePath, totalFrames, canvas, sceneKey = "" }
   let retainFullCache = false;
   let lastQueueRun = 0;
   let paused = document.visibilityState === "hidden";
-  const resolvedBasePath = resolveFrameBasePath(getResponsiveFrameBasePath(basePath));
+  const resolvedBasePath = resolveFrameBasePath(basePath);
   const maxBehind = sceneKey === "intro" ? 8 : 12;
   const maxAhead = sceneKey === "intro" ? 40 : 60;
   const nearbyRadius = sceneKey === "intro" ? 6 : 8;
