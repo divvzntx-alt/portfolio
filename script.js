@@ -1572,7 +1572,6 @@ function startExperience() {
 
 window.addEventListener("resize", updateViewportVars);
 window.visualViewport?.addEventListener("resize", updateViewportVars);
-window.visualViewport?.addEventListener("scroll", updateViewportVars);
 window.addEventListener("resize", buildGlyphField);
 window.addEventListener("resize", resizeIntroCanvas);
 window.addEventListener("mousemove", setMouseMotion);
