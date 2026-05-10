@@ -107,6 +107,17 @@ let scrollDebugOverlay = null;
 let lastScrollDebugUpdate = -Infinity;
 let lastScrollDebugHold = "none";
 let lastIntroDebugLog = 0;
+let touchScrollHoldDepth = 0;
+
+function pushTouchScrollHold() {
+  let released = false;
+  touchScrollHoldDepth += 1;
+  return () => {
+    if (released) return;
+    released = true;
+    touchScrollHoldDepth = Math.max(0, touchScrollHoldDepth - 1);
+  };
+}
 
 function debugScrollHold(source, event) {
   if (!DEBUG_SCROLL_HOLDS) return;
@@ -913,7 +924,7 @@ function bindTouchScroller(scroller, onManualScroll) {
   let startY = 0;
   let startScrollTop = 0;
 
-  const canDrag = () => scroller.classList.contains("is-active") && isMotionViewport();
+  const canDrag = () => touchScrollHoldDepth <= 0 && scroller.classList.contains("is-active") && isMotionViewport();
 
   scroller.addEventListener("touchstart", (event) => {
     if (!canDrag() || event.touches.length !== 1 || shouldBypassTouchScroller(event.target)) {
@@ -927,6 +938,11 @@ function bindTouchScroller(scroller, onManualScroll) {
 
   scroller.addEventListener("touchmove", (event) => {
     if (!isDragging || event.touches.length !== 1) return;
+    if (touchScrollHoldDepth > 0) {
+      debugScrollHold("touchScroller:held", event);
+      event.preventDefault();
+      return;
+    }
     const deltaY = startY - event.touches[0].clientY;
     if (Math.abs(deltaY) < 2) return;
     const travelMultiplier = viewportMode === "mobile" ? 1.2 : viewportMode === "tablet" ? 1.1 : 1;
@@ -3801,6 +3817,7 @@ function showWorldOverlay(onDismiss, options = {}) {
   let dismissed = false;
   let scrollDismissEnabled = false;
   let guardedDismissOnScroll = null;
+  let releaseTouchScrollHold = null;
   const blockScroll = (event) => {
     debugScrollHold("worldOverlay", event);
     event.preventDefault();
@@ -3815,6 +3832,10 @@ function showWorldOverlay(onDismiss, options = {}) {
   function dismiss() {
     if (dismissed) return;
     dismissed = true;
+    if (releaseTouchScrollHold) {
+      releaseTouchScrollHold();
+      releaseTouchScrollHold = null;
+    }
     if (journey) {
       journey.removeEventListener("wheel", blockScroll);
       journey.removeEventListener("touchmove", blockScroll);
@@ -3850,6 +3871,7 @@ function showWorldOverlay(onDismiss, options = {}) {
     const startedAt = performance.now();
     const minimumHoldUntil = startedAt + holdDuration;
     const maxHoldUntil = startedAt + Math.max(holdDuration, maxHoldDuration);
+    releaseTouchScrollHold = pushTouchScrollHold();
     if (journey) {
       journey.addEventListener("wheel", blockScroll, { passive: false });
       journey.addEventListener("touchmove", blockScroll, { passive: false });
@@ -3866,6 +3888,10 @@ function showWorldOverlay(onDismiss, options = {}) {
       if ((!minimumElapsed || !ready) && !timedOut) {
         window.setTimeout(releaseWhenReady, 120);
         return;
+      }
+      if (releaseTouchScrollHold) {
+        releaseTouchScrollHold();
+        releaseTouchScrollHold = null;
       }
       scrollDismissEnabled = true;
       if (journey) {
@@ -3915,6 +3941,7 @@ function showProjectPopover(sceneKey, onDismiss, options = {}) {
   let autoDismissTimeoutId = 0;
   let scrollDismissEnabled = !scrollDismiss;
   let guardedDismissOnScroll = null;
+  let releaseTouchScrollHold = null;
   const toggleMobilePanel = (event) => {
     if (!useMobileProjectPanel) return;
     event.stopPropagation();
@@ -3938,6 +3965,10 @@ function showProjectPopover(sceneKey, onDismiss, options = {}) {
   const dismiss = () => {
     if (dismissed) return;
     dismissed = true;
+    if (releaseTouchScrollHold) {
+      releaseTouchScrollHold();
+      releaseTouchScrollHold = null;
+    }
     if (autoDismissTimeoutId) {
       window.clearTimeout(autoDismissTimeoutId);
       autoDismissTimeoutId = 0;
@@ -3989,6 +4020,7 @@ function showProjectPopover(sceneKey, onDismiss, options = {}) {
         }, 300);
         return;
       }
+      releaseTouchScrollHold = pushTouchScrollHold();
       if (journey) {
         journey.addEventListener("wheel", blockScroll, { passive: false });
         journey.addEventListener("touchmove", blockScroll, { passive: false });
@@ -4005,6 +4037,10 @@ function showProjectPopover(sceneKey, onDismiss, options = {}) {
         if ((!minimumElapsed || !ready) && !timedOut) {
           window.setTimeout(releaseWhenReady, 120);
           return;
+        }
+        if (releaseTouchScrollHold) {
+          releaseTouchScrollHold();
+          releaseTouchScrollHold = null;
         }
         scrollDismissEnabled = true;
         if (journey) {
