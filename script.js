@@ -2692,6 +2692,7 @@ function beginScrollJourney() {
     if (holdDuration <= 0) return;
     const warmMap = {
       s4: { getStream: ensureS6Stream, scene: "s6", count: 120 },
+      s9: { getStream: ensureS10Stream, scene: "s10", count: 120 },
       s11: { getStream: ensureS13Stream, scene: "s13", count: 120 },
     };
     const target = warmMap[sceneKey];
