@@ -2819,7 +2819,7 @@ function beginScrollJourney() {
     const readinessMap = {
       s4: { getStream: ensureS6Stream, touchReadyCount: 36, count: 120 },
       s7: { getStream: ensureS8Stream, touchReadyCount: 36, count: 120 },
-      s9: { getStream: ensureS10Stream, touchReadyCount: 120, count: 120 },
+      s9: { getStream: ensureS10Stream, touchReadyCount: 84, count: 120 },
       s11: { getStream: ensureS13Stream, touchReadyCount: 120, count: 120 },
       s14: { getStream: ensureS15Stream, touchReadyCount: 160, count: 160 },
     };
