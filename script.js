@@ -1422,7 +1422,6 @@ function startLoadingAnimation() {
   const stream = ensureIntroStream();
   const contactStreams = ensureContactPreloadStreams();
   const minVisibleUntil = performance.now() + 1300;
-  const maxWaitUntil = performance.now() + 18000;
   let displayedProgress = 0;
 
   const setProgress = (value) => {
@@ -1453,14 +1452,18 @@ function startLoadingAnimation() {
     contactStreams.forEach(({ stream: contactStream }) => {
       contactStream.processQueue(now, true);
     });
-    const loaded = stream.countLoadedInRange(0, introTotalFrames);
-    setProgress((loaded / introTotalFrames) * 100);
+    const introLoaded = stream.countLoadedInRange(0, introTotalFrames);
+    const contactLoaded = contactStreams.reduce((sum, { stream: contactStream, totalFrames }) => {
+      return sum + contactStream.countLoadedInRange(0, totalFrames);
+    }, 0);
+    const totalFramesToLoad = introTotalFrames + contactStreams.reduce((sum, { totalFrames }) => sum + totalFrames, 0);
+    const totalLoaded = introLoaded + contactLoaded;
+    setProgress((totalLoaded / totalFramesToLoad) * 100);
 
-    const ready = loaded >= introTotalFrames;
+    const ready = totalLoaded >= totalFramesToLoad;
     const pastMinimum = performance.now() >= minVisibleUntil;
-    const timedOut = performance.now() >= maxWaitUntil;
 
-    if ((ready && pastMinimum) || timedOut) {
+    if (ready && pastMinimum) {
       introFramesReadyBeforeSequence = ready;
       setProgress(100);
       setTimeout(hideLoader, 220);
@@ -1985,8 +1988,8 @@ function ensureOpeningWorldPreloadStreams() {
     });
   }
   return [
-    { stream: openingPreloadS2Stream, totalFrames: 121, preloadFrames: 121, readyFrames: 108 },
-    { stream: openingPreloadS3Stream, totalFrames: 289, preloadFrames: 160, readyFrames: 140 },
+    { stream: openingPreloadS2Stream, totalFrames: 121, preloadFrames: 121, readyFrames: 121 },
+    { stream: openingPreloadS3Stream, totalFrames: 289, preloadFrames: 160, readyFrames: 160 },
   ];
 }
 
@@ -2132,7 +2135,7 @@ function handoffFromIntroScroll() {
     }, {
       scroller: introScrollJourney,
       holdUntilReady: createWayfinderHoldReadiness(),
-      maxHoldDuration: 5600,
+      maxHoldDuration: Number.POSITIVE_INFINITY,
     });
   } else {
     activateJourney();
@@ -2800,14 +2803,13 @@ function beginScrollJourney() {
     if (!target) return null;
     const stream = target.getStream();
     if (!stream) return null;
-    const readyCount = Math.min(target.count, Math.ceil(target.count * 0.88));
 
     return () => {
       const now = performance.now();
       stream.preloadRange(0, target.count);
       stream.setTarget(0, now);
       stream.processQueue(now, true);
-      return stream.countLoadedInRange(0, target.count) >= readyCount;
+      return stream.countLoadedInRange(0, target.count) >= target.count;
     };
   }
 
@@ -2865,7 +2867,7 @@ function beginScrollJourney() {
       scrollDismiss: !isReverse,
       holdDuration,
       holdUntilReady: isReverse ? null : createProjectHoldReadiness(sceneKey),
-      maxHoldDuration: isReverse ? holdDuration : 5200,
+      maxHoldDuration: isReverse ? holdDuration : Number.POSITIVE_INFINITY,
       autoDismissAfter: 0,
       entranceDelay: 0,
       entranceDuration: firstTime ? 360 : 280,
