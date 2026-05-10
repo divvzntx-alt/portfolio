@@ -768,6 +768,8 @@ let introStream = null;
 let introScrollUnlockAt = 0;
 let introScrollSafetyWaitUntil = 0;
 let introFramesReadyBeforeSequence = false;
+let openingPreloadS2Stream = null;
+let openingPreloadS3Stream = null;
 let contactPreloadS15Stream = null;
 let contactPreloadS16Stream = null;
 let viewportMode = "desktop";
@@ -1948,6 +1950,52 @@ function ensureContactPreloadStreams() {
   ];
 }
 
+function ensureOpeningWorldPreloadStreams() {
+  if (!openingPreloadS2Stream) {
+    openingPreloadS2Stream = createSceneFrameStream({
+      basePath: "./assets/scene2-frames-1600",
+      totalFrames: 121,
+      canvas: createPreloadCanvas(),
+      sceneKey: "s2",
+    });
+  }
+  if (!openingPreloadS3Stream) {
+    openingPreloadS3Stream = createSceneFrameStream({
+      basePath: "./assets/scene3-frames-1600",
+      totalFrames: 289,
+      canvas: createPreloadCanvas(),
+      sceneKey: "s3",
+    });
+  }
+  return [
+    { stream: openingPreloadS2Stream, totalFrames: 121, preloadFrames: 121, readyFrames: 108 },
+    { stream: openingPreloadS3Stream, totalFrames: 289, preloadFrames: 160, readyFrames: 140 },
+  ];
+}
+
+function createWayfinderHoldReadiness() {
+  const preloadStreams = ensureOpeningWorldPreloadStreams();
+  preloadStreams.forEach(({ stream }) => {
+    if (typeof stream.retainLoadedFrames === "function") {
+      stream.retainLoadedFrames();
+    }
+  });
+
+  return () => {
+    const now = performance.now();
+    let ready = true;
+    preloadStreams.forEach(({ stream, preloadFrames, readyFrames }) => {
+      stream.preloadRange(0, preloadFrames);
+      stream.setTarget(0, now);
+      stream.processQueue(now, true);
+      if (stream.countLoadedInRange(0, preloadFrames) < readyFrames) {
+        ready = false;
+      }
+    });
+    return ready;
+  };
+}
+
 function prepareIntroScrollMode() {
   const now = performance.now();
   introScrollUnlockAt = now;
@@ -2065,7 +2113,9 @@ function handoffFromIntroScroll() {
       }
       activateJourney();
     }, {
-      scroller: introScrollJourney
+      scroller: introScrollJourney,
+      holdUntilReady: createWayfinderHoldReadiness(),
+      maxHoldDuration: 5600,
     });
   } else {
     activateJourney();
@@ -2271,18 +2321,24 @@ function beginScrollJourney() {
   s16Canvas.height = window.innerHeight;
   s16Canvas.style.opacity = "0";
 
-  const s2Stream = createSceneFrameStream({
+  const s2Stream = openingPreloadS2Stream || createSceneFrameStream({
     basePath: "./assets/scene2-frames-1600",
     totalFrames: 121,
     canvas: s2Canvas,
     sceneKey: "s2",
   });
-  const s3Stream = createSceneFrameStream({
+  if (s2Stream.canvas !== s2Canvas && typeof s2Stream.attachCanvas === "function") {
+    s2Stream.attachCanvas(s2Canvas);
+  }
+  const s3Stream = openingPreloadS3Stream || createSceneFrameStream({
     basePath: "./assets/scene3-frames-1600",
     totalFrames: 289,
     canvas: s3Canvas,
     sceneKey: "s3",
   });
+  if (s3Stream.canvas !== s3Canvas && typeof s3Stream.attachCanvas === "function") {
+    s3Stream.attachCanvas(s3Canvas);
+  }
   const nullStream = {
     clear() {},
     prime() {},
@@ -3726,6 +3782,8 @@ function showWorldOverlay(onDismiss, options = {}) {
   if (!overlay) return;
   const journey = options.scroller || document.getElementById("scrollJourney");
   const holdDuration = 1800;
+  const holdUntilReady = typeof options.holdUntilReady === "function" ? options.holdUntilReady : null;
+  const maxHoldDuration = options.maxHoldDuration ?? holdDuration;
 
   buildOverlayGlyphField();
 
@@ -3788,6 +3846,9 @@ function showWorldOverlay(onDismiss, options = {}) {
 
   const startScrollHold = () => {
     if (dismissed) return;
+    const startedAt = performance.now();
+    const minimumHoldUntil = startedAt + holdDuration;
+    const maxHoldUntil = startedAt + Math.max(holdDuration, maxHoldDuration);
     if (journey) {
       journey.addEventListener("wheel", blockScroll, { passive: false });
       journey.addEventListener("touchmove", blockScroll, { passive: false });
@@ -3795,8 +3856,16 @@ function showWorldOverlay(onDismiss, options = {}) {
     window.addEventListener("wheel", blockScroll, { passive: false });
     window.addEventListener("touchmove", blockScroll, { passive: false });
     window.addEventListener("keydown", blockKeyScroll);
-    window.setTimeout(() => {
+    const releaseWhenReady = () => {
       if (dismissed) return;
+      const now = performance.now();
+      const minimumElapsed = now >= minimumHoldUntil;
+      const ready = !holdUntilReady || holdUntilReady();
+      const timedOut = now >= maxHoldUntil;
+      if ((!minimumElapsed || !ready) && !timedOut) {
+        window.setTimeout(releaseWhenReady, 120);
+        return;
+      }
       scrollDismissEnabled = true;
       if (journey) {
         journey.removeEventListener("wheel", blockScroll);
@@ -3805,7 +3874,8 @@ function showWorldOverlay(onDismiss, options = {}) {
       window.removeEventListener("wheel", blockScroll);
       window.removeEventListener("touchmove", blockScroll);
       window.removeEventListener("keydown", blockKeyScroll);
-    }, holdDuration);
+    };
+    window.setTimeout(releaseWhenReady, 120);
   };
 
   if (journey) {
