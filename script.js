@@ -2826,6 +2826,9 @@ function beginScrollJourney() {
     if (!target) return null;
     const stream = target.getStream();
     if (!stream) return null;
+    if (typeof stream.retainLoadedFrames === "function") {
+      stream.retainLoadedFrames();
+    }
 
     return () => {
       const now = performance.now();
