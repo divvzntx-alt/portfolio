@@ -766,6 +766,8 @@ let journeyFrameCallback = null;
 let mistFrameCallback = null;
 let caseStudyOverlayUnloadTimer = 0;
 let aboutOverlayVisible = false;
+let pendingCaseStudyReadiness = null;
+let releaseCaseStudyReadinessTouchHold = null;
 let journeyChromeVisible = false;
 let journeyMenuOpen = false;
 let introScrollActive = false;
@@ -779,6 +781,13 @@ let introStream = null;
 let introScrollUnlockAt = 0;
 let introScrollSafetyWaitUntil = 0;
 let introFramesReadyBeforeSequence = false;
+
+function clearCaseStudyReadinessHold() {
+  if (releaseCaseStudyReadinessTouchHold) {
+    releaseCaseStudyReadinessTouchHold();
+    releaseCaseStudyReadinessTouchHold = null;
+  }
+}
 let openingPreloadS2Stream = null;
 let openingPreloadS3Stream = null;
 let contactPreloadS15Stream = null;
@@ -1082,10 +1091,11 @@ function buildCaseStudyOverlaySrc(src) {
   return url.toString();
 }
 
-function openCaseStudyOverlay(sceneKey) {
+function openCaseStudyOverlay(sceneKey, holdUntilReady = null) {
   const src = caseStudySrcByScene[sceneKey];
   if (!src || !caseStudyOverlay || !caseStudyOverlayFrame) return false;
   const journey = document.getElementById("scrollJourney");
+  pendingCaseStudyReadiness = typeof holdUntilReady === "function" ? holdUntilReady : null;
 
   if (caseStudyOverlayUnloadTimer) {
     window.clearTimeout(caseStudyOverlayUnloadTimer);
@@ -1109,9 +1119,22 @@ function closeCaseStudyOverlay() {
   caseStudyOverlay.classList.remove("is-visible");
   caseStudyOverlay.setAttribute("aria-hidden", "true");
 
-  if (journey) {
-    journey.style.overflowY = "scroll";
-  }
+  const releaseJourneyWhenReady = () => {
+    if (!journey) return;
+    const readiness = pendingCaseStudyReadiness;
+    if (!readiness || readiness()) {
+      pendingCaseStudyReadiness = null;
+      clearCaseStudyReadinessHold();
+      journey.style.overflowY = "scroll";
+      return;
+    }
+    journey.style.overflowY = "hidden";
+    if (!releaseCaseStudyReadinessTouchHold) {
+      releaseCaseStudyReadinessTouchHold = pushTouchScrollHold();
+    }
+    window.setTimeout(releaseJourneyWhenReady, 120);
+  };
+  releaseJourneyWhenReady();
 
   if (caseStudyOverlayUnloadTimer) {
     window.clearTimeout(caseStudyOverlayUnloadTimer);
@@ -3943,6 +3966,7 @@ function showProjectPopover(sceneKey, onDismiss, options = {}) {
   let autoDismissTimeoutId = 0;
   let scrollDismissEnabled = !scrollDismiss;
   let guardedDismissOnScroll = null;
+  let guardedDismissOnPopoverTouch = null;
   let releaseTouchScrollHold = null;
   const toggleMobilePanel = (event) => {
     if (!useMobileProjectPanel) return;
@@ -3988,6 +4012,10 @@ function showProjectPopover(sceneKey, onDismiss, options = {}) {
     window.removeEventListener("wheel", blockScroll);
     window.removeEventListener("touchmove", blockScroll);
     window.removeEventListener("keydown", blockKeyScroll);
+    projectPopover.removeEventListener("touchmove", blockScroll, true);
+    if (guardedDismissOnPopoverTouch) {
+      projectPopover.removeEventListener("touchmove", guardedDismissOnPopoverTouch, true);
+    }
     if (guardedDismissOnScroll) {
       window.removeEventListener("wheel", guardedDismissOnScroll);
       window.removeEventListener("touchmove", guardedDismissOnScroll);
@@ -4027,6 +4055,7 @@ function showProjectPopover(sceneKey, onDismiss, options = {}) {
         journey.addEventListener("wheel", blockScroll, { passive: false });
         journey.addEventListener("touchmove", blockScroll, { passive: false });
       }
+      projectPopover.addEventListener("touchmove", blockScroll, { passive: false, capture: true });
       window.addEventListener("wheel", blockScroll, { passive: false });
       window.addEventListener("touchmove", blockScroll, { passive: false });
       window.addEventListener("keydown", blockKeyScroll);
@@ -4049,6 +4078,7 @@ function showProjectPopover(sceneKey, onDismiss, options = {}) {
           journey.removeEventListener("wheel", blockScroll);
           journey.removeEventListener("touchmove", blockScroll);
         }
+        projectPopover.removeEventListener("touchmove", blockScroll, true);
         window.removeEventListener("wheel", blockScroll);
         window.removeEventListener("touchmove", blockScroll);
         window.removeEventListener("keydown", blockKeyScroll);
@@ -4066,11 +4096,19 @@ function showProjectPopover(sceneKey, onDismiss, options = {}) {
       window.removeEventListener("touchmove", guardedDismissOnScroll);
       dismissOnScroll();
     };
+    guardedDismissOnPopoverTouch = (event) => {
+      if (!scrollDismissEnabled) return;
+      if (useMobileProjectPanel && projectPopoverExpanded && projectPopoverBody?.contains(event.target)) {
+        return;
+      }
+      guardedDismissOnScroll();
+    };
     if (journey) {
       journey.addEventListener("scroll", guardedDismissOnScroll);
       journey.addEventListener("wheel", guardedDismissOnScroll);
       journey.addEventListener("touchmove", guardedDismissOnScroll);
     }
+    projectPopover.addEventListener("touchmove", guardedDismissOnPopoverTouch, { capture: true });
     window.addEventListener("wheel", guardedDismissOnScroll);
     window.addEventListener("touchmove", guardedDismissOnScroll);
     window.setTimeout(startScrollHold, (entranceDelay || 16) + 24);
@@ -4124,10 +4162,11 @@ function showProjectPopover(sceneKey, onDismiss, options = {}) {
         event.stopPropagation();
         playUiClick();
         const shouldOpenCaseStudy = Boolean(caseStudySrcByScene[sceneKey]);
+        const caseStudyHoldUntilReady = holdUntilReady;
         dismiss();
         if (shouldOpenCaseStudy) {
           window.setTimeout(() => {
-            openCaseStudyOverlay(sceneKey);
+            openCaseStudyOverlay(sceneKey, caseStudyHoldUntilReady);
           }, 520);
         }
       },
