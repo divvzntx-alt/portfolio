@@ -929,7 +929,8 @@ function bindTouchScroller(scroller, onManualScroll) {
     if (!isDragging || event.touches.length !== 1) return;
     const deltaY = startY - event.touches[0].clientY;
     if (Math.abs(deltaY) < 2) return;
-    scroller.scrollTop = startScrollTop + deltaY;
+    const travelMultiplier = viewportMode === "mobile" ? 1.2 : viewportMode === "tablet" ? 1.1 : 1;
+    scroller.scrollTop = startScrollTop + deltaY * travelMultiplier;
     if (typeof onManualScroll === "function") {
       onManualScroll();
     }
