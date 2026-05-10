@@ -2692,7 +2692,10 @@ function beginScrollJourney() {
     if (holdDuration <= 0) return;
     const warmMap = {
       s4: { getStream: ensureS6Stream, scene: "s6", count: 120 },
+      s7: { getStream: ensureS8Stream, scene: "s8", count: 120 },
+      s9: { getStream: ensureS10Stream, scene: "s10", count: 120 },
       s11: { getStream: ensureS13Stream, scene: "s13", count: 120 },
+      s14: { getStream: ensureS15Stream, scene: "s15", count: 160 },
     };
     const target = warmMap[sceneKey];
     if (!target) return;
@@ -2710,6 +2713,29 @@ function beginScrollJourney() {
     };
 
     window.setTimeout(tick, 90);
+  }
+
+  function createProjectHoldReadiness(sceneKey) {
+    const readinessMap = {
+      s4: { getStream: ensureS6Stream, count: 120 },
+      s7: { getStream: ensureS8Stream, count: 120 },
+      s9: { getStream: ensureS10Stream, count: 120 },
+      s11: { getStream: ensureS13Stream, count: 120 },
+      s14: { getStream: ensureS15Stream, count: 160 },
+    };
+    const target = readinessMap[sceneKey];
+    if (!target) return null;
+    const stream = target.getStream();
+    if (!stream) return null;
+    const readyCount = Math.min(target.count, Math.ceil(target.count * 0.88));
+
+    return () => {
+      const now = performance.now();
+      stream.preloadRange(0, target.count);
+      stream.setTarget(0, now);
+      stream.processQueue(now, true);
+      return stream.countLoadedInRange(0, target.count) >= readyCount;
+    };
   }
 
   function maybeShowProjectScene(sceneKey, direction = 1) {
@@ -2765,6 +2791,8 @@ function beginScrollJourney() {
     }, {
       scrollDismiss: !isReverse,
       holdDuration,
+      holdUntilReady: isReverse ? null : createProjectHoldReadiness(sceneKey),
+      maxHoldDuration: isReverse ? holdDuration : 5200,
       autoDismissAfter: 0,
       entranceDelay: 0,
       entranceDuration: firstTime ? 360 : 280,
@@ -3795,6 +3823,8 @@ function showProjectPopover(sceneKey, onDismiss, options = {}) {
   const useMobileProjectPanel = isMobileProjectPanelMode();
   const scrollDismiss = options.scrollDismiss ?? false;
   const holdDuration = options.holdDuration ?? 0;
+  const holdUntilReady = typeof options.holdUntilReady === "function" ? options.holdUntilReady : null;
+  const maxHoldDuration = options.maxHoldDuration ?? holdDuration;
   const autoDismissAfter = options.autoDismissAfter ?? 0;
   const entranceDelay = options.entranceDelay ?? 24;
   const entranceDuration = options.entranceDuration ?? 700;
@@ -3879,7 +3909,10 @@ function showProjectPopover(sceneKey, onDismiss, options = {}) {
     const dismissOnScroll = () => dismiss();
     const startScrollHold = () => {
       if (dismissed) return;
-      if (holdDuration <= 0) {
+      const startedAt = performance.now();
+      const minimumHoldUntil = startedAt + holdDuration;
+      const maxHoldUntil = startedAt + Math.max(holdDuration, maxHoldDuration);
+      if (holdDuration <= 0 && !holdUntilReady) {
         window.setTimeout(() => {
           if (!dismissed) scrollDismissEnabled = true;
         }, 300);
@@ -3892,8 +3925,16 @@ function showProjectPopover(sceneKey, onDismiss, options = {}) {
       window.addEventListener("wheel", blockScroll, { passive: false });
       window.addEventListener("touchmove", blockScroll, { passive: false });
       window.addEventListener("keydown", blockKeyScroll);
-      window.setTimeout(() => {
+      const releaseWhenReady = () => {
         if (dismissed) return;
+        const now = performance.now();
+        const minimumElapsed = now >= minimumHoldUntil;
+        const ready = !holdUntilReady || holdUntilReady();
+        const timedOut = now >= maxHoldUntil;
+        if ((!minimumElapsed || !ready) && !timedOut) {
+          window.setTimeout(releaseWhenReady, 120);
+          return;
+        }
         scrollDismissEnabled = true;
         if (journey) {
           journey.removeEventListener("wheel", blockScroll);
@@ -3902,7 +3943,8 @@ function showProjectPopover(sceneKey, onDismiss, options = {}) {
         window.removeEventListener("wheel", blockScroll);
         window.removeEventListener("touchmove", blockScroll);
         window.removeEventListener("keydown", blockKeyScroll);
-      }, holdDuration);
+      };
+      window.setTimeout(releaseWhenReady, 120);
     };
     guardedDismissOnScroll = () => {
       if (!scrollDismissEnabled) return;
