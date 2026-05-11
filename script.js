@@ -858,6 +858,13 @@ function applyViewportMode(mode = getViewportMode()) {
   queueMotionFrameRedraw();
 }
 
+function getAppViewportHeight() {
+  if (isMotionViewport() && window.visualViewport?.height) {
+    return Math.round(window.visualViewport.height);
+  }
+  return window.innerHeight;
+}
+
 function updateResponsiveCopy() {
   const useTouchCopy = viewportMode !== "desktop";
   touchCopyNodes.forEach((node) => {
@@ -893,7 +900,7 @@ function clampIntroProgress(value) {
 }
 
 function progressFromWheelDelta(currentProgress, deltaY) {
-  const safeViewportHeight = Math.max(1, window.innerHeight);
+  const safeViewportHeight = Math.max(1, getAppViewportHeight());
   const progressStep = deltaY / (safeViewportHeight * introTravelScreens);
   return clampIntroProgress(currentProgress + progressStep);
 }
@@ -1263,7 +1270,7 @@ function buildGlyphField() {
   const padding = isMobile ? 24 : 34;
   const targetCell = isMobile ? 38 : 42;
   const usableWidth = Math.max(window.innerWidth - padding * 2, 320);
-  const usableHeight = Math.max(window.innerHeight - padding * 2, 320);
+  const usableHeight = Math.max(getAppViewportHeight() - padding * 2, 320);
   const columns = Math.max(10, Math.floor(usableWidth / (targetCell + gap)));
   const rows = Math.max(10, Math.floor(usableHeight / (targetCell + gap)));
   const total = columns * rows;
@@ -1391,11 +1398,13 @@ function startAutoFlash() {
 
 function updateViewportVars() {
   applyViewportMode();
-  const maxWidth = Math.min(window.innerWidth, window.innerHeight * (16 / 9));
+  const appHeight = getAppViewportHeight();
+  const maxWidth = Math.min(window.innerWidth, appHeight * (16 / 9));
   const maxHeight = maxWidth / (16 / 9);
   const marginX = window.innerWidth > 900 ? window.innerWidth * 0.56 : window.innerWidth * 0.78;
-  const marginY = (window.innerHeight - (window.innerWidth > 900 ? 160 : 224)) * (16 / 9);
+  const marginY = (appHeight - (window.innerWidth > 900 ? 160 : 224)) * (16 / 9);
   const introWidth = Math.min(marginX, marginY, maxWidth);
+  document.documentElement.style.setProperty("--app-height", `${appHeight}px`);
   document.documentElement.style.setProperty("--final-width", `${maxWidth}px`);
   document.documentElement.style.setProperty("--final-height", `${maxHeight}px`);
 }
@@ -1606,6 +1615,8 @@ function startExperience() {
 }
 
 window.addEventListener("resize", updateViewportVars);
+window.visualViewport?.addEventListener("resize", updateViewportVars);
+window.visualViewport?.addEventListener("scroll", updateViewportVars);
 window.addEventListener("resize", buildGlyphField);
 window.addEventListener("resize", resizeIntroCanvas);
 window.addEventListener("mousemove", setMouseMotion);
@@ -1832,7 +1843,7 @@ function createSceneFrameStream({ basePath, totalFrames, canvas, sceneKey = "" }
 
   function resizeToViewport() {
     activeCanvas.width = window.innerWidth;
-    activeCanvas.height = window.innerHeight;
+    activeCanvas.height = getAppViewportHeight();
     lastPaintedIndex = null;
     lastRequestedIndex = null;
     draw(lastDrawnIndex);
@@ -1937,7 +1948,7 @@ function createSceneFrameStream({ basePath, totalFrames, canvas, sceneKey = "" }
 function resizeIntroCanvas() {
   if (!introSceneCanvas) return;
   introSceneCanvas.width = window.innerWidth;
-  introSceneCanvas.height = window.innerHeight;
+  introSceneCanvas.height = getAppViewportHeight();
 }
 
 function ensureIntroStream() {
@@ -2227,21 +2238,22 @@ function beginScrollJourney() {
   const scene14 = document.getElementById("scene14");
   const scene15 = document.getElementById("scene15");
   const scene16 = document.getElementById("scene16");
-  const s2Height = window.innerHeight * 4;
-  const s3Height = window.innerHeight * 7;
-  const s4Height = window.innerHeight * 6;
+  const journeyViewportHeight = getAppViewportHeight();
+  const s2Height = journeyViewportHeight * 4;
+  const s3Height = journeyViewportHeight * 7;
+  const s4Height = journeyViewportHeight * 6;
   const s5Height = 0;
-  const s6Height = window.innerHeight * 6;
-  const s7Height = window.innerHeight * 4;
-  const s8Height = window.innerHeight * 6;
-  const s9Height = window.innerHeight * 6;
-  const s10Height = window.innerHeight * 6;
-  const s11Height = window.innerHeight * 6;
+  const s6Height = journeyViewportHeight * 6;
+  const s7Height = journeyViewportHeight * 4;
+  const s8Height = journeyViewportHeight * 6;
+  const s9Height = journeyViewportHeight * 6;
+  const s10Height = journeyViewportHeight * 6;
+  const s11Height = journeyViewportHeight * 6;
   const s12Height = 0;
-  const s13Height = window.innerHeight * 6;
-  const s14Height = window.innerHeight * 5;
-  const s15Height = window.innerHeight * 7;
-  const s16Height = window.innerHeight * 4;
+  const s13Height = journeyViewportHeight * 6;
+  const s14Height = journeyViewportHeight * 5;
+  const s15Height = journeyViewportHeight * 7;
+  const s16Height = journeyViewportHeight * 4;
   scene2.style.height = s2Height + "px";
   scene3.style.height = s3Height + "px";
   scene4.style.height = s4Height + "px";
@@ -2259,21 +2271,21 @@ function beginScrollJourney() {
   scene16.style.height = s16Height + "px";
   void journey.offsetHeight;
 
-  const s2MaxScroll = s2Height - window.innerHeight;
+  const s2MaxScroll = s2Height - journeyViewportHeight;
   const s3Start = s2MaxScroll;
-  const s4Start = s2Height + s3Height - window.innerHeight;
-  const s5Start = s2Height + s3Height + s4Height - window.innerHeight;
-  const s6Start = s2Height + s3Height + s4Height + s5Height - window.innerHeight;
-  const s7Start = s2Height + s3Height + s4Height + s5Height + s6Height - window.innerHeight;
-  const s8Start = s2Height + s3Height + s4Height + s5Height + s6Height + s7Height - window.innerHeight;
-  const s9Start = s2Height + s3Height + s4Height + s5Height + s6Height + s7Height + s8Height - window.innerHeight;
-  const s10Start = s2Height + s3Height + s4Height + s5Height + s6Height + s7Height + s8Height + s9Height - window.innerHeight;
-  const s11Start = s2Height + s3Height + s4Height + s5Height + s6Height + s7Height + s8Height + s9Height + s10Height - window.innerHeight;
-  const s12Start = s2Height + s3Height + s4Height + s5Height + s6Height + s7Height + s8Height + s9Height + s10Height + s11Height - window.innerHeight;
-  const s13Start = s2Height + s3Height + s4Height + s5Height + s6Height + s7Height + s8Height + s9Height + s10Height + s11Height + s12Height - window.innerHeight;
-  const s14Start = s2Height + s3Height + s4Height + s5Height + s6Height + s7Height + s8Height + s9Height + s10Height + s11Height + s12Height + s13Height - window.innerHeight;
-  const s15Start = s2Height + s3Height + s4Height + s5Height + s6Height + s7Height + s8Height + s9Height + s10Height + s11Height + s12Height + s13Height + s14Height - window.innerHeight;
-  const s16Start = s2Height + s3Height + s4Height + s5Height + s6Height + s7Height + s8Height + s9Height + s10Height + s11Height + s12Height + s13Height + s14Height + s15Height - window.innerHeight;
+  const s4Start = s2Height + s3Height - journeyViewportHeight;
+  const s5Start = s2Height + s3Height + s4Height - journeyViewportHeight;
+  const s6Start = s2Height + s3Height + s4Height + s5Height - journeyViewportHeight;
+  const s7Start = s2Height + s3Height + s4Height + s5Height + s6Height - journeyViewportHeight;
+  const s8Start = s2Height + s3Height + s4Height + s5Height + s6Height + s7Height - journeyViewportHeight;
+  const s9Start = s2Height + s3Height + s4Height + s5Height + s6Height + s7Height + s8Height - journeyViewportHeight;
+  const s10Start = s2Height + s3Height + s4Height + s5Height + s6Height + s7Height + s8Height + s9Height - journeyViewportHeight;
+  const s11Start = s2Height + s3Height + s4Height + s5Height + s6Height + s7Height + s8Height + s9Height + s10Height - journeyViewportHeight;
+  const s12Start = s2Height + s3Height + s4Height + s5Height + s6Height + s7Height + s8Height + s9Height + s10Height + s11Height - journeyViewportHeight;
+  const s13Start = s2Height + s3Height + s4Height + s5Height + s6Height + s7Height + s8Height + s9Height + s10Height + s11Height + s12Height - journeyViewportHeight;
+  const s14Start = s2Height + s3Height + s4Height + s5Height + s6Height + s7Height + s8Height + s9Height + s10Height + s11Height + s12Height + s13Height - journeyViewportHeight;
+  const s15Start = s2Height + s3Height + s4Height + s5Height + s6Height + s7Height + s8Height + s9Height + s10Height + s11Height + s12Height + s13Height + s14Height - journeyViewportHeight;
+  const s16Start = s2Height + s3Height + s4Height + s5Height + s6Height + s7Height + s8Height + s9Height + s10Height + s11Height + s12Height + s13Height + s14Height + s15Height - journeyViewportHeight;
   const s3ScrollRange = s4Start - s3Start;
   const s4ScrollRange = s5Start - s4Start;
   const s5ScrollRange = s6Start - s5Start;
@@ -2292,76 +2304,76 @@ function beginScrollJourney() {
 
   const s2Canvas = document.getElementById("scene2Canvas");
   s2Canvas.width = window.innerWidth;
-  s2Canvas.height = window.innerHeight;
+  s2Canvas.height = journeyViewportHeight;
 
   const s3Canvas = document.getElementById("scene3Canvas");
   s3Canvas.width = window.innerWidth;
-  s3Canvas.height = window.innerHeight;
+  s3Canvas.height = journeyViewportHeight;
   s3Canvas.style.opacity = "0";
 
   const s4Canvas = document.getElementById("scene4Canvas");
   s4Canvas.width = window.innerWidth;
-  s4Canvas.height = window.innerHeight;
+  s4Canvas.height = journeyViewportHeight;
   s4Canvas.style.opacity = "0";
 
   const s5Canvas = document.getElementById("scene5Canvas");
   s5Canvas.width = window.innerWidth;
-  s5Canvas.height = window.innerHeight;
+  s5Canvas.height = journeyViewportHeight;
   s5Canvas.style.opacity = "0";
 
   const s6Canvas = document.getElementById("scene6Canvas");
   s6Canvas.width = window.innerWidth;
-  s6Canvas.height = window.innerHeight;
+  s6Canvas.height = journeyViewportHeight;
   s6Canvas.style.opacity = "0";
 
   const s7Canvas = document.getElementById("scene7Canvas");
   s7Canvas.width = window.innerWidth;
-  s7Canvas.height = window.innerHeight;
+  s7Canvas.height = journeyViewportHeight;
   s7Canvas.style.opacity = "0";
 
   const s8Canvas = document.getElementById("scene8Canvas");
   s8Canvas.width = window.innerWidth;
-  s8Canvas.height = window.innerHeight;
+  s8Canvas.height = journeyViewportHeight;
   s8Canvas.style.opacity = "0";
 
   const s9Canvas = document.getElementById("scene9Canvas");
   s9Canvas.width = window.innerWidth;
-  s9Canvas.height = window.innerHeight;
+  s9Canvas.height = journeyViewportHeight;
   s9Canvas.style.opacity = "0";
 
   const s10Canvas = document.getElementById("scene10Canvas");
   s10Canvas.width = window.innerWidth;
-  s10Canvas.height = window.innerHeight;
+  s10Canvas.height = journeyViewportHeight;
   s10Canvas.style.opacity = "0";
 
   const s11Canvas = document.getElementById("scene11Canvas");
   s11Canvas.width = window.innerWidth;
-  s11Canvas.height = window.innerHeight;
+  s11Canvas.height = journeyViewportHeight;
   s11Canvas.style.opacity = "0";
 
   const s12Canvas = document.getElementById("scene12Canvas");
   s12Canvas.width = window.innerWidth;
-  s12Canvas.height = window.innerHeight;
+  s12Canvas.height = journeyViewportHeight;
   s12Canvas.style.opacity = "0";
 
   const s13Canvas = document.getElementById("scene13Canvas");
   s13Canvas.width = window.innerWidth;
-  s13Canvas.height = window.innerHeight;
+  s13Canvas.height = journeyViewportHeight;
   s13Canvas.style.opacity = "0";
 
   const s14Canvas = document.getElementById("scene14Canvas");
   s14Canvas.width = window.innerWidth;
-  s14Canvas.height = window.innerHeight;
+  s14Canvas.height = journeyViewportHeight;
   s14Canvas.style.opacity = "0";
 
   const s15Canvas = document.getElementById("scene15Canvas");
   s15Canvas.width = window.innerWidth;
-  s15Canvas.height = window.innerHeight;
+  s15Canvas.height = journeyViewportHeight;
   s15Canvas.style.opacity = "0";
 
   const s16Canvas = document.getElementById("scene16Canvas");
   s16Canvas.width = window.innerWidth;
-  s16Canvas.height = window.innerHeight;
+  s16Canvas.height = journeyViewportHeight;
   s16Canvas.style.opacity = "0";
 
   const s2Stream = openingPreloadS2Stream || createSceneFrameStream({
@@ -2456,9 +2468,10 @@ function beginScrollJourney() {
 
   function resizeJourneyCanvases() {
     applyViewportMode();
+    const nextViewportHeight = getAppViewportHeight();
     journeyCanvases.forEach((canvas) => {
       canvas.width = window.innerWidth;
-      canvas.height = window.innerHeight;
+      canvas.height = nextViewportHeight;
     });
     getJourneyStreams().forEach((stream) => stream.resizeToViewport());
   }
@@ -2474,6 +2487,7 @@ function beginScrollJourney() {
   }
 
   window.addEventListener("resize", queueJourneyResize);
+  window.visualViewport?.addEventListener("resize", queueJourneyResize);
 
   function ensureS4Stream() {
     if (!s4Initialized) {
@@ -3705,7 +3719,7 @@ function buildOverlayGlyphField() {
   const padding = 34;
   const targetCell = 42;
   const cols = Math.max(10, Math.floor((window.innerWidth - padding * 2) / (targetCell + gap)));
-  const rows = Math.max(8, Math.floor((window.innerHeight - padding * 2) / (targetCell + gap)));
+  const rows = Math.max(8, Math.floor((getAppViewportHeight() - padding * 2) / (targetCell + gap)));
   field.style.gridTemplateColumns = `repeat(${cols}, 1fr)`;
   field.style.gridTemplateRows = `repeat(${rows}, 1fr)`;
   for (let i = 0; i < cols * rows; i++) {
@@ -3759,7 +3773,7 @@ function initOverlayRipple() {
 
   function resize() {
     canvas.width = window.innerWidth;
-    canvas.height = window.innerHeight;
+    canvas.height = getAppViewportHeight();
     gl.viewport(0, 0, canvas.width, canvas.height);
   }
 
@@ -4372,10 +4386,11 @@ void main(){
   gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
 
   function resize() {
+    const appHeight = getAppViewportHeight();
     mistCanvas.width = Math.max(1, Math.floor(window.innerWidth * mistDprCap));
-    mistCanvas.height = Math.max(1, Math.floor(window.innerHeight * mistDprCap));
+    mistCanvas.height = Math.max(1, Math.floor(appHeight * mistDprCap));
     mistCanvas.style.width = `${window.innerWidth}px`;
-    mistCanvas.style.height = `${window.innerHeight}px`;
+    mistCanvas.style.height = `${appHeight}px`;
     gl.viewport(0, 0, mistCanvas.width, mistCanvas.height);
     gl.useProgram(prog);
     gl.uniform2f(uResolution, mistCanvas.width, mistCanvas.height);
@@ -4970,12 +4985,13 @@ function initFluidBackground() {
   let suppressionTarget = 0;
 
   function resize() {
+    const appHeight = getAppViewportHeight();
     const width = Math.max(1, Math.floor(window.innerWidth * dprCap));
-    const height = Math.max(1, Math.floor(window.innerHeight * dprCap));
+    const height = Math.max(1, Math.floor(appHeight * dprCap));
     fluidBgCanvas.width = width;
     fluidBgCanvas.height = height;
     fluidBgCanvas.style.width = `${window.innerWidth}px`;
-    fluidBgCanvas.style.height = `${window.innerHeight}px`;
+    fluidBgCanvas.style.height = `${appHeight}px`;
     gl.viewport(0, 0, width, height);
     gl.uniform2f(uResolution, width, height);
   }
