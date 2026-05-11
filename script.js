@@ -1,4 +1,8 @@
 const brahmiDigits = ["𑁦", "𑁧", "𑁨", "𑁩", "𑁪", "𑁫", "𑁬", "𑁭", "𑁮", "𑁯"];
+if ("scrollRestoration" in history) {
+  history.scrollRestoration = "manual";
+}
+
 const brahmiGlyphs = [
   "𑀅",
   "𑀆",
@@ -227,13 +231,23 @@ function updateSafariDebugOverlay() {
     ].join(";");
     document.body.appendChild(safariDebugOverlay);
   }
+  const bodyH = Math.round(document.body.clientHeight);
+  const bodyW = Math.round(document.body.clientWidth);
+  const introSH = introScrollJourney ? Math.round(introScrollJourney.scrollHeight) : "?";
+  const introCH = introScrollJourney ? Math.round(introScrollJourney.clientHeight) : "?";
+  const journeySH = scrollJourney ? Math.round(scrollJourney.scrollHeight) : "?";
+  const journeyCH = scrollJourney ? Math.round(scrollJourney.clientHeight) : "?";
+  const proxyActive = macSafariScrollProxy ? "yes" : "no";
   safariDebugOverlay.textContent = [
     `ua safari: ${isMacSafari() ? "yes" : "no"} mode: ${viewportMode}`,
-    `body: ${document.body.className || "none"}`,
+    `body: ${bodyW}x${bodyH} overflow: ${window.getComputedStyle(document.body).overflow}`,
     `holdDepth: ${touchScrollHoldDepth}`,
     `introActive: ${introScrollActive ? "yes" : "no"} transitioning: ${introScrollTransitioning ? "yes" : "no"}`,
-    `intro: ${getElementScrollState(introScrollJourney)}`,
-    `journey: ${getElementScrollState(scrollJourney)}`,
+    `intro: scroll=${Math.round(introScrollJourney?.scrollTop || 0)} sh=${introSH} ch=${introCH} max=${introSH - introCH}`,
+    `intro-el: ${getElementScrollState(introScrollJourney)}`,
+    `journey: scroll=${Math.round(scrollJourney?.scrollTop || 0)} sh=${journeySH} ch=${journeyCH}`,
+    `journey-el: ${getElementScrollState(scrollJourney)}`,
+    `proxy: ${proxyActive} winY=${Math.round(window.scrollY || 0)}`,
     `worldOverlay: ${document.getElementById("worldOverlay")?.className || "missing"}`,
     `lastWheel: ${lastSafariWheelBridge}`,
     `readiness: ${lastSafariReadiness}`,
@@ -901,9 +915,10 @@ function getViewportMode() {
 
 function isMacSafari() {
   const ua = window.navigator.userAgent || "";
-  const platform = window.navigator.platform || "";
   const isSafari = /Safari/i.test(ua) && !/Chrome|Chromium|CriOS|FxiOS|Edg/i.test(ua);
-  return isSafari && /Mac/i.test(platform);
+  if (!isSafari) return false;
+  const platform = window.navigator.platform || window.navigator.userAgentData?.platform || "";
+  return /Mac/i.test(platform) || (typeof window.safari !== "undefined" && !/Mobile/i.test(ua));
 }
 
 function applyViewportMode(mode = getViewportMode()) {
@@ -1008,6 +1023,61 @@ function registerMacSafariWheelBridge() {
     target.addEventListener("mousewheel", handleMacSafariWindowWheel, listenerOptions);
   });
 }
+
+/* ── Safari scroll proxy (fallback for touch and any wheel-bridge gaps) ─── */
+let macSafariScrollProxy = null;
+
+function syncMacSafariProxyHeight() {
+  if (!macSafariScrollProxy?.scroller) return;
+  const scroller = macSafariScrollProxy.scroller;
+  const maxScrollTop = Math.max(0, scroller.scrollHeight - scroller.clientHeight);
+  document.documentElement.style.overflowY = "auto";
+  document.body.style.overflowY = "auto";
+  document.body.style.height = `${window.innerHeight + maxScrollTop}px`;
+  document.body.style.minHeight = `${window.innerHeight + maxScrollTop}px`;
+}
+
+function enableMacSafariScrollProxy(scroller, onScroll) {
+  if (!isMacSafari() || !scroller) return;
+  disableMacSafariScrollProxy(false);
+  const handleScroll = () => {
+    if (!macSafariScrollProxy?.scroller) return;
+    const maxScrollTop = Math.max(
+      0,
+      macSafariScrollProxy.scroller.scrollHeight - macSafariScrollProxy.scroller.clientHeight
+    );
+    const targetScrollTop = Math.max(0, Math.min(maxScrollTop, window.scrollY || window.pageYOffset || 0));
+    macSafariScrollProxy.scroller.scrollTop = targetScrollTop;
+    lastSafariWheelBridge = `proxy scroll=${Math.round(targetScrollTop)}`;
+    if (typeof macSafariScrollProxy.onScroll === "function") {
+      macSafariScrollProxy.onScroll();
+    }
+    if (macSafariScrollProxy.scroller === scrollJourney && typeof journeyFrameCallback === "function") {
+      journeyFrameCallback(performance.now());
+    }
+  };
+  macSafariScrollProxy = { scroller, onScroll, handleScroll };
+  syncMacSafariProxyHeight();
+  window.scrollTo(0, scroller.scrollTop || 0);
+  window.addEventListener("scroll", handleScroll, { passive: true });
+}
+
+function disableMacSafariScrollProxy(resetScroll = true) {
+  if (!macSafariScrollProxy) return;
+  window.removeEventListener("scroll", macSafariScrollProxy.handleScroll);
+  macSafariScrollProxy = null;
+  document.body.style.height = "";
+  document.body.style.minHeight = "";
+  document.body.style.overflowY = "";
+  document.documentElement.style.overflowY = "";
+  if (resetScroll) {
+    window.scrollTo(0, 0);
+  }
+}
+
+window.addEventListener("resize", () => {
+  if (isMacSafari()) syncMacSafariProxyHeight();
+});
 
 function updateResponsiveCopy() {
   const useTouchCopy = viewportMode !== "desktop";
@@ -2247,6 +2317,8 @@ function activateIntroScrollMode() {
       clientHeight: Math.round(introScrollJourney.clientHeight),
       maxScrollTop: Math.round(introScrollJourney.scrollHeight - introScrollJourney.clientHeight),
     });
+    enableMacSafariScrollProxy(introScrollJourney, handleIntroScrollInput);
+    window.setTimeout(syncMacSafariProxyHeight, 120);
   }
 
   if (stream) {
@@ -2292,6 +2364,10 @@ function handoffFromIntroScroll() {
   document.body.classList.remove("is-intro-frame-ready");
   document.body.classList.add("is-intro-handoff-active");
   setIntroScrollPromptVisible(false);
+  // Don't disable the proxy yet — keep body height inflated so Safari wheel events
+  // still reach guardedDismissOnScroll during the wayfinder transition.
+  // The journey's enableMacSafariScrollProxy call in beginScrollJourney will
+  // replace it via disableMacSafariScrollProxy(false) inside enableMacSafariScrollProxy.
   if (introScrollJourney) {
     introScrollJourney.classList.remove("is-active");
     introScrollJourney.setAttribute("aria-hidden", "true");
@@ -2316,7 +2392,7 @@ function handoffFromIntroScroll() {
     }, {
       scroller: introScrollJourney,
       holdUntilReady: createWayfinderHoldReadiness(),
-      maxHoldDuration: Number.POSITIVE_INFINITY,
+      maxHoldDuration: 12000,
     });
   } else {
     activateJourney();
@@ -2448,6 +2524,8 @@ function beginScrollJourney() {
   const s15ScrollRange = s16Start - s15Start;
   const s16ScrollRange = s16Height;
   journey.scrollTop = 0;
+  enableMacSafariScrollProxy(journey, null);
+  window.setTimeout(syncMacSafariProxyHeight, 120);
 
   const s2Canvas = document.getElementById("scene2Canvas");
   s2Canvas.width = window.innerWidth;
@@ -4047,6 +4125,7 @@ function showWorldOverlay(onDismiss, options = {}) {
     if (guardedDismissOnScroll) {
       window.removeEventListener("wheel", guardedDismissOnScroll);
       window.removeEventListener("touchmove", guardedDismissOnScroll);
+      window.removeEventListener("scroll", guardedDismissOnScroll);
     }
     overlay.classList.remove("is-visible");
     overlay.classList.add("is-exiting");
@@ -4097,6 +4176,15 @@ function showWorldOverlay(onDismiss, options = {}) {
       window.removeEventListener("wheel", blockScroll);
       window.removeEventListener("touchmove", blockScroll);
       window.removeEventListener("keydown", blockKeyScroll);
+      // Safari-specific: at this point window.scrollY is at body max (no more
+      // scroll range), so neither window "scroll" nor "wheel" events will fire
+      // if the user has stopped gesturing. Auto-dismiss after a short grace
+      // period so the transition isn't permanently stuck.
+      if (isMacSafari()) {
+        window.setTimeout(() => {
+          if (!dismissed) dismiss();
+        }, 800);
+      }
     };
     window.setTimeout(releaseWhenReady, 120);
   };
@@ -4108,6 +4196,10 @@ function showWorldOverlay(onDismiss, options = {}) {
   }
   window.addEventListener("wheel", guardedDismissOnScroll);
   window.addEventListener("touchmove", guardedDismissOnScroll);
+  // Safari: the scroll proxy drives dismiss via window scroll events (not wheel).
+  // Momentum scroll on Safari fires scroll events but not cancelable wheel events,
+  // so we also listen on window scroll to catch proxy-driven movement.
+  window.addEventListener("scroll", guardedDismissOnScroll, { passive: true });
   window.setTimeout(startScrollHold, 24);
 }
 
