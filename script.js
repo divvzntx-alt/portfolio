@@ -1,4 +1,8 @@
 const brahmiDigits = ["𑁦", "𑁧", "𑁨", "𑁩", "𑁪", "𑁫", "𑁬", "𑁭", "𑁮", "𑁯"];
+if ("scrollRestoration" in history) {
+  history.scrollRestoration = "manual";
+}
+
 const brahmiGlyphs = [
   "𑀅",
   "𑀆",
@@ -901,9 +905,10 @@ function getViewportMode() {
 
 function isMacSafari() {
   const ua = window.navigator.userAgent || "";
-  const platform = window.navigator.platform || "";
   const isSafari = /Safari/i.test(ua) && !/Chrome|Chromium|CriOS|FxiOS|Edg/i.test(ua);
-  return isSafari && /Mac/i.test(platform);
+  if (!isSafari) return false;
+  const platform = window.navigator.platform || window.navigator.userAgentData?.platform || "";
+  return /Mac/i.test(platform) || (typeof window.safari !== "undefined" && !/Mobile/i.test(ua));
 }
 
 function applyViewportMode(mode = getViewportMode()) {
