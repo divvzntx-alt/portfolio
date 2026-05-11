@@ -1391,14 +1391,22 @@ function startAutoFlash() {
 
 function updateViewportVars() {
   applyViewportMode();
-  const visualViewportHeight = window.visualViewport?.height;
+  const visualViewport = window.visualViewport;
+  const visualViewportHeight = visualViewport?.height;
+  const visualViewportWidth = visualViewport?.width;
   const appHeight = Number.isFinite(visualViewportHeight) ? visualViewportHeight : window.innerHeight;
-  const maxWidth = Math.min(window.innerWidth, window.innerHeight * (16 / 9));
+  const appWidth = Number.isFinite(visualViewportWidth) ? visualViewportWidth : window.innerWidth;
+  const appTop = Number.isFinite(visualViewport?.offsetTop) ? visualViewport.offsetTop : 0;
+  const appLeft = Number.isFinite(visualViewport?.offsetLeft) ? visualViewport.offsetLeft : 0;
+  const maxWidth = Math.min(appWidth, appHeight * (16 / 9));
   const maxHeight = maxWidth / (16 / 9);
-  const marginX = window.innerWidth > 900 ? window.innerWidth * 0.56 : window.innerWidth * 0.78;
-  const marginY = (window.innerHeight - (window.innerWidth > 900 ? 160 : 224)) * (16 / 9);
+  const marginX = appWidth > 900 ? appWidth * 0.56 : appWidth * 0.78;
+  const marginY = (appHeight - (appWidth > 900 ? 160 : 224)) * (16 / 9);
   const introWidth = Math.min(marginX, marginY, maxWidth);
   document.documentElement.style.setProperty("--app-height", `${appHeight}px`);
+  document.documentElement.style.setProperty("--app-width", `${appWidth}px`);
+  document.documentElement.style.setProperty("--app-top", `${appTop}px`);
+  document.documentElement.style.setProperty("--app-left", `${appLeft}px`);
   document.documentElement.style.setProperty("--final-width", `${maxWidth}px`);
   document.documentElement.style.setProperty("--final-height", `${maxHeight}px`);
 }
