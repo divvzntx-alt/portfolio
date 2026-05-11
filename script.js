@@ -101,12 +101,16 @@ const soundWavePaths = Array.from(document.querySelectorAll(".sound-wave__motion
 const sceneFrameStreams = [];
 const FRAME_BASE_URL = typeof window.FRAME_BASE_URL === "string" ? window.FRAME_BASE_URL.trim() : "";
 const DEBUG_SCROLL_DIAGNOSTICS = new URLSearchParams(window.location.search).has("debugScroll");
+const DEBUG_SAFARI_DIAGNOSTICS = new URLSearchParams(window.location.search).has("debugSafari");
 const DEBUG_SCROLL_HOLDS = DEBUG_SCROLL_DIAGNOSTICS;
 const DEBUG_INTRO_SCROLL = DEBUG_SCROLL_DIAGNOSTICS;
 let scrollDebugOverlay = null;
+let safariDebugOverlay = null;
 let lastScrollDebugUpdate = -Infinity;
 let lastScrollDebugHold = "none";
 let lastIntroDebugLog = 0;
+let lastSafariWheelBridge = "none";
+let lastSafariReadiness = "none";
 let touchScrollHoldDepth = 0;
 
 function pushTouchScrollHold() {
@@ -188,6 +192,58 @@ if (DEBUG_SCROLL_DIAGNOSTICS) {
       scrollTop: scrollJourney?.scrollTop || 0,
     });
   });
+}
+
+function getElementScrollState(el) {
+  if (!el) return "missing";
+  const style = window.getComputedStyle(el);
+  return [
+    `class=${el.className || "none"}`,
+    `display=${style.display}`,
+    `overflowY=${style.overflowY}`,
+    `scroll=${Math.round(el.scrollTop)}/${Math.round(el.scrollHeight - el.clientHeight)}`,
+    `client=${Math.round(el.clientWidth)}x${Math.round(el.clientHeight)}`,
+  ].join(" ");
+}
+
+function updateSafariDebugOverlay() {
+  if (!DEBUG_SAFARI_DIAGNOSTICS) return;
+  if (!safariDebugOverlay) {
+    safariDebugOverlay = document.createElement("div");
+    safariDebugOverlay.style.cssText = [
+      "position:fixed",
+      "left:12px",
+      "top:12px",
+      "z-index:2147483647",
+      "max-width:min(560px, calc(100vw - 24px))",
+      "padding:10px 12px",
+      "background:rgba(3, 8, 14, 0.88)",
+      "color:#dff4ff",
+      "font:11px/1.45 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace",
+      "border:1px solid rgba(176, 225, 255, 0.35)",
+      "border-radius:6px",
+      "pointer-events:none",
+      "white-space:pre-wrap",
+    ].join(";");
+    document.body.appendChild(safariDebugOverlay);
+  }
+  safariDebugOverlay.textContent = [
+    `ua safari: ${isMacSafari() ? "yes" : "no"} mode: ${viewportMode}`,
+    `body: ${document.body.className || "none"}`,
+    `holdDepth: ${touchScrollHoldDepth}`,
+    `introActive: ${introScrollActive ? "yes" : "no"} transitioning: ${introScrollTransitioning ? "yes" : "no"}`,
+    `intro: ${getElementScrollState(introScrollJourney)}`,
+    `journey: ${getElementScrollState(scrollJourney)}`,
+    `worldOverlay: ${document.getElementById("worldOverlay")?.className || "missing"}`,
+    `lastWheel: ${lastSafariWheelBridge}`,
+    `readiness: ${lastSafariReadiness}`,
+    `lastHold: ${lastScrollDebugHold}`,
+  ].join("\n");
+}
+
+if (DEBUG_SAFARI_DIAGNOSTICS) {
+  window.setInterval(updateSafariDebugOverlay, 180);
+  window.requestAnimationFrame(updateSafariDebugOverlay);
 }
 
 function normalizeFrameBaseUrl(url) {
@@ -876,11 +932,18 @@ function bridgeWheelToScroller(scroller, event) {
   if (!scroller || !isMacSafari()) return false;
   if (event.__macSafariWheelBridged) return false;
   const maxScrollTop = Math.max(0, scroller.scrollHeight - scroller.clientHeight);
-  if (maxScrollTop <= 0) return false;
+  if (maxScrollTop <= 0) {
+    lastSafariWheelBridge = `blocked max=0 target=${event?.target?.id || event?.target?.className || event?.target?.tagName || "unknown"}`;
+    return false;
+  }
   const nextScrollTop = Math.max(0, Math.min(maxScrollTop, scroller.scrollTop + event.deltaY));
-  if (nextScrollTop === scroller.scrollTop) return false;
+  if (nextScrollTop === scroller.scrollTop) {
+    lastSafariWheelBridge = `edge delta=${Math.round(event.deltaY)} scroll=${Math.round(scroller.scrollTop)}/${Math.round(maxScrollTop)}`;
+    return false;
+  }
   scroller.scrollTop = nextScrollTop;
   event.__macSafariWheelBridged = true;
+  lastSafariWheelBridge = `bridged delta=${Math.round(event.deltaY)} scroll=${Math.round(nextScrollTop)}/${Math.round(maxScrollTop)}`;
   return true;
 }
 
@@ -907,9 +970,16 @@ function getMacSafariWheelBridgeScroller() {
 }
 
 function handleMacSafariWindowWheel(event) {
-  if (event.__macSafariWheelBridged || shouldBypassMacSafariWheelBridge(event.target)) return;
+  if (event.__macSafariWheelBridged) return;
+  if (shouldBypassMacSafariWheelBridge(event.target)) {
+    lastSafariWheelBridge = `bypassed target=${event?.target?.id || event?.target?.className || event?.target?.tagName || "unknown"}`;
+    return;
+  }
   const scroller = getMacSafariWheelBridgeScroller();
-  if (!scroller) return;
+  if (!scroller) {
+    lastSafariWheelBridge = `no scroller hold=${touchScrollHoldDepth} intro=${introScrollActive ? "yes" : "no"} journey=${scrollJourney?.classList.contains("is-active") ? "yes" : "no"}`;
+    return;
+  }
   const bridged = bridgeWheelToScroller(scroller, event);
   if (!bridged) return;
   if (scroller === introScrollJourney) {
@@ -2090,14 +2160,18 @@ function createWayfinderHoldReadiness() {
   return () => {
     const now = performance.now();
     let ready = true;
+    const readinessParts = [];
     preloadStreams.forEach(({ stream, preloadFrames, readyFrames }) => {
       stream.preloadRange(0, preloadFrames);
       stream.setTarget(0, now);
       stream.processQueue(now, true);
-      if (stream.countLoadedInRange(0, preloadFrames) < readyFrames) {
+      const loaded = stream.countLoadedInRange(0, preloadFrames);
+      readinessParts.push(`${loaded}/${readyFrames}`);
+      if (loaded < readyFrames) {
         ready = false;
       }
     });
+    lastSafariReadiness = `wayfinder ${readinessParts.join(" + ")} ready=${ready ? "yes" : "no"}`;
     return ready;
   };
 }
@@ -2905,7 +2979,10 @@ function beginScrollJourney() {
       stream.preloadRange(0, target.count);
       stream.setTarget(0, now);
       stream.processQueue(now, true);
-      return stream.countLoadedInRange(0, useTouchReadiness ? readyCount : target.count) >= readyCount;
+      const loaded = stream.countLoadedInRange(0, useTouchReadiness ? readyCount : target.count);
+      const ready = loaded >= readyCount;
+      lastSafariReadiness = `${sceneKey} ${loaded}/${readyCount} ready=${ready ? "yes" : "no"}`;
+      return ready;
     };
   }
 
