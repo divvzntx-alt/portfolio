@@ -2300,7 +2300,6 @@ function activateIntroScrollMode() {
       maxScrollTop: Math.round(introScrollJourney.scrollHeight - introScrollJourney.clientHeight),
     });
     enableMacSafariScrollProxy(introScrollJourney, handleIntroScrollInput);
-    window.setTimeout(syncMacSafariProxyHeight, 120);
   }
 
   if (stream) {
@@ -2324,9 +2323,6 @@ function syncIntroTargetProgress() {
 function handleIntroScrollInput() {
   if (!introScrollActive || introScrollTransitioning) return;
   syncIntroTargetProgress();
-  if (isMacSafari()) {
-    lastSafariWheelBridge = `intro-scroll scroll=${Math.round(introScrollJourney?.scrollTop || 0)}`;
-  }
   debugIntroScroll("scroll", {
     scrollTop: Math.round(introScrollJourney?.scrollTop || 0),
     targetProgress: Number(introScrollTargetProgress.toFixed(4)),
@@ -2507,7 +2503,6 @@ function beginScrollJourney() {
   const s16ScrollRange = s16Height;
   journey.scrollTop = 0;
   enableMacSafariScrollProxy(journey, null);
-  window.setTimeout(syncMacSafariProxyHeight, 120);
 
   const s2Canvas = document.getElementById("scene2Canvas");
   s2Canvas.width = window.innerWidth;
