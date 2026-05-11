@@ -1366,24 +1366,28 @@ body.is-tablet .scene-canvas {
   color: var(--text);
 }
 
-body.is-mac-safari-alt .page {
+body.is-mac-safari-alt-active .page {
   min-height: 420vh;
   overflow: visible;
 }
 
-body.is-mac-safari-alt {
+body.is-mac-safari-alt-active {
   overflow-y: auto;
   perspective: none;
 }
 
-body.is-mac-safari-alt .intro-scroll-journey,
-body.is-mac-safari-alt .scroll-journey,
-body.is-mac-safari-alt .journey-chrome {
+body.is-mac-safari-alt-active .intro-scroll-journey,
+body.is-mac-safari-alt-active .scroll-journey,
+body.is-mac-safari-alt-active .journey-chrome {
   display: none !important;
 }
 
-body.is-mac-safari-alt .safari-journey {
+body.is-mac-safari-alt-active .safari-journey {
   display: block;
+}
+
+body.is-mac-safari-alt-active .project-popover {
+  position: fixed;
 }
 
 .safari-journey__canvas {

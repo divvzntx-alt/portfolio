@@ -34,6 +34,11 @@ const scrollPrompt = document.getElementById("scrollPrompt");
 const touchCopyNodes = document.querySelectorAll("[data-touch-copy]");
 const introScrollJourney = document.getElementById("introScrollJourney");
 const scrollJourney = document.getElementById("scrollJourney");
+const safariJourney = document.getElementById("safariJourney");
+const safariJourneyCanvas = document.getElementById("safariJourneyCanvas");
+const safariJourneyEyebrow = document.getElementById("safariJourneyEyebrow");
+const safariJourneyTitle = document.getElementById("safariJourneyTitle");
+const safariProjectButton = document.getElementById("safariProjectButton");
 const thresholdTransition = document.getElementById("thresholdTransition");
 const mistCanvas = document.getElementById("mistCanvas");
 const darkOverlay = document.getElementById("darkOverlay");
@@ -837,6 +842,10 @@ let introStream = null;
 let introScrollUnlockAt = 0;
 let introScrollSafetyWaitUntil = 0;
 let introFramesReadyBeforeSequence = false;
+let safariJourneyActive = false;
+let safariJourneyStream = null;
+let safariJourneyRaf = 0;
+let safariProjectOpened = false;
 
 function clearCaseStudyReadinessHold() {
   if (releaseCaseStudyReadinessTouchHold) {
@@ -1650,6 +1659,10 @@ function startExperience() {
     return;
   }
 
+  if (startSafariAlternateJourney()) {
+    return;
+  }
+
   sequenceTimers.forEach((timer) => window.clearTimeout(timer));
   sequenceTimers = [];
 
@@ -1756,6 +1769,11 @@ window.visualViewport?.addEventListener("resize", updateViewportVars);
 window.visualViewport?.addEventListener("scroll", updateViewportVars);
 window.addEventListener("resize", buildGlyphField);
 window.addEventListener("resize", resizeIntroCanvas);
+window.addEventListener("scroll", queueSafariJourneyRender, { passive: true });
+window.addEventListener("resize", () => {
+  resizeSafariJourneyCanvas();
+  queueSafariJourneyRender();
+});
 window.addEventListener("mousemove", setMouseMotion);
 window.addEventListener("mouseleave", resetMouseMotion);
 registerMacSafariWheelBridge();
@@ -1784,6 +1802,12 @@ if (scrollJourney) {
 }
 if (isDesktopMacSafariAltEligible()) {
   document.body.classList.add("is-mac-safari-alt");
+}
+if (safariProjectButton) {
+  safariProjectButton.addEventListener("click", () => {
+    playUiClick();
+    openSafariProofProject();
+  });
 }
 walkButton.addEventListener("click", () => {
   setSoundEnabled(true, true);
@@ -2093,6 +2117,89 @@ function createSceneFrameStream({ basePath, totalFrames, canvas, sceneKey = "" }
   };
   sceneFrameStreams.push(stream);
   return stream;
+}
+
+function ensureSafariJourneyStream() {
+  if (!safariJourneyCanvas) return null;
+  if (!safariJourneyStream) {
+    safariJourneyStream = createSceneFrameStream({
+      basePath: "./assets/scene2-frames-1600",
+      totalFrames: 121,
+      canvas: safariJourneyCanvas,
+      sceneKey: "s2",
+    });
+  }
+  return safariJourneyStream;
+}
+
+function resizeSafariJourneyCanvas() {
+  if (!safariJourneyCanvas) return;
+  safariJourneyCanvas.width = window.innerWidth;
+  safariJourneyCanvas.height = window.innerHeight;
+  if (safariJourneyStream) {
+    safariJourneyStream.resizeToViewport();
+  }
+}
+
+function renderSafariJourney() {
+  if (!safariJourneyActive || !safariJourney || !safariJourneyStream) return;
+  const maxScroll = Math.max(1, safariJourney.offsetHeight - window.innerHeight);
+  const progress = Math.max(0, Math.min(1, window.scrollY / maxScroll));
+  const frame = Math.round(progress * 120);
+  const now = performance.now();
+  safariJourneyStream.setTarget(frame, now);
+  safariJourneyStream.draw(frame);
+
+  if (safariJourneyEyebrow) {
+    safariJourneyEyebrow.textContent = progress > 0.52 ? "KINDLING" : "THE PASSAGE";
+  }
+  if (safariJourneyTitle) {
+    safariJourneyTitle.textContent = progress > 0.52 ? "A brand with warmth." : "The First Chamber";
+  }
+  if (safariProjectButton) {
+    safariProjectButton.style.opacity = progress > 0.52 ? "1" : "0.42";
+  }
+}
+
+function queueSafariJourneyRender() {
+  if (safariJourneyRaf) return;
+  safariJourneyRaf = window.requestAnimationFrame(() => {
+    safariJourneyRaf = 0;
+    renderSafariJourney();
+  });
+}
+
+function startSafariAlternateJourney() {
+  if (!isDesktopMacSafariAltEligible() || !safariJourney || safariJourneyActive) return false;
+  safariJourneyActive = true;
+  document.body.classList.add("is-mac-safari-alt-active");
+  safariJourney.setAttribute("aria-hidden", "false");
+  resizeSafariJourneyCanvas();
+  safariJourneyStream = ensureSafariJourneyStream();
+  if (safariJourneyStream) {
+    safariJourneyStream.preloadRange(0, 121);
+    safariJourneyStream.setTarget(0, performance.now());
+    safariJourneyStream.draw(0);
+  }
+  window.scrollTo(0, 0);
+  queueSafariJourneyRender();
+  return true;
+}
+
+function openSafariProofProject() {
+  if (!safariJourneyActive || safariProjectOpened) return;
+  safariProjectOpened = true;
+  showProjectPopover("s4", () => {
+    safariProjectOpened = false;
+    document.body.style.overflowY = "auto";
+  }, {
+    scrollDismiss: false,
+    holdDuration: 0,
+    autoDismissAfter: 0,
+    entranceDelay: 0,
+    entranceDuration: 280,
+    entranceOpacityDuration: 220,
+  });
 }
 
 function resizeIntroCanvas() {
