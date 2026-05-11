@@ -109,7 +109,9 @@ body {
   overflow: hidden;
   font-family: "Noto Sans", sans-serif;
   color: var(--text);
-  perspective: 1600px;
+  /* perspective removed from body — on Safari, perspective creates a new containing block
+     for position:fixed descendants, collapsing their size to body's height (~0). Moved to
+     .screen-script-layer which is the actual parent of the glyphs that use translate3d. */
 }
 
 button {
@@ -214,6 +216,7 @@ button {
   overflow: hidden;
   pointer-events: none;
   transition: opacity 1200ms ease;
+  perspective: 1600px; /* moved from body to avoid Safari fixed-position containing block bug */
 }
 
 .screen-script-layer__surface,
