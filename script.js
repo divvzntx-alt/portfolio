@@ -843,6 +843,13 @@ function getViewportMode() {
   return "desktop";
 }
 
+function isMacSafari() {
+  const ua = window.navigator.userAgent || "";
+  const platform = window.navigator.platform || "";
+  const isSafari = /Safari/i.test(ua) && !/Chrome|Chromium|CriOS|FxiOS|Edg/i.test(ua);
+  return isSafari && /Mac/i.test(platform);
+}
+
 function applyViewportMode(mode = getViewportMode()) {
   viewportMode = mode;
   document.body.classList.toggle("is-mobile-portrait", mode === "mobile");
@@ -863,6 +870,16 @@ function getAppViewportHeight() {
     return Math.round(window.visualViewport.height);
   }
   return window.innerHeight;
+}
+
+function bridgeWheelToScroller(scroller, event) {
+  if (!scroller || !isMacSafari()) return false;
+  const maxScrollTop = Math.max(0, scroller.scrollHeight - scroller.clientHeight);
+  if (maxScrollTop <= 0) return false;
+  const nextScrollTop = Math.max(0, Math.min(maxScrollTop, scroller.scrollTop + event.deltaY));
+  if (nextScrollTop === scroller.scrollTop) return false;
+  scroller.scrollTop = nextScrollTop;
+  return true;
 }
 
 function updateResponsiveCopy() {
@@ -1625,14 +1642,23 @@ if (introScrollJourney) {
   introScrollJourney.addEventListener("scroll", handleIntroScrollInput, { passive: true });
   introScrollJourney.addEventListener("wheel", (event) => {
     if (!introScrollActive || introScrollTransitioning) return;
+    const bridged = bridgeWheelToScroller(introScrollJourney, event);
+    if (bridged) {
+      handleIntroScrollInput();
+    }
     debugIntroScroll("wheel", {
       deltaY: Math.round(event.deltaY),
       scrollTop: Math.round(introScrollJourney.scrollTop),
+      bridged,
     }, 120);
   }, { passive: true });
   bindTouchScroller(introScrollJourney, handleIntroScrollInput);
 }
 if (scrollJourney) {
+  scrollJourney.addEventListener("wheel", (event) => {
+    if (!scrollJourney.classList.contains("is-active") || touchScrollHoldDepth > 0) return;
+    bridgeWheelToScroller(scrollJourney, event);
+  }, { passive: true });
   bindTouchScroller(scrollJourney);
 }
 walkButton.addEventListener("click", () => {
