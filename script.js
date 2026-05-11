@@ -928,22 +928,35 @@ function getAppViewportHeight() {
   return window.innerHeight;
 }
 
+function getWheelDeltaY(event) {
+  if (Number.isFinite(event.deltaY) && event.deltaY !== 0) return event.deltaY;
+  if (Number.isFinite(event.wheelDeltaY) && event.wheelDeltaY !== 0) return -event.wheelDeltaY;
+  if (Number.isFinite(event.wheelDelta) && event.wheelDelta !== 0) return -event.wheelDelta;
+  if (Number.isFinite(event.detail) && event.detail !== 0) return event.detail * 16;
+  return 0;
+}
+
 function bridgeWheelToScroller(scroller, event) {
   if (!scroller || !isMacSafari()) return false;
   if (event.__macSafariWheelBridged) return false;
+  const deltaY = getWheelDeltaY(event);
+  if (!deltaY) {
+    lastSafariWheelBridge = `zero delta type=${event?.type || "unknown"}`;
+    return false;
+  }
   const maxScrollTop = Math.max(0, scroller.scrollHeight - scroller.clientHeight);
   if (maxScrollTop <= 0) {
     lastSafariWheelBridge = `blocked max=0 target=${event?.target?.id || event?.target?.className || event?.target?.tagName || "unknown"}`;
     return false;
   }
-  const nextScrollTop = Math.max(0, Math.min(maxScrollTop, scroller.scrollTop + event.deltaY));
+  const nextScrollTop = Math.max(0, Math.min(maxScrollTop, scroller.scrollTop + deltaY));
   if (nextScrollTop === scroller.scrollTop) {
-    lastSafariWheelBridge = `edge delta=${Math.round(event.deltaY)} scroll=${Math.round(scroller.scrollTop)}/${Math.round(maxScrollTop)}`;
+    lastSafariWheelBridge = `edge ${event?.type || "wheel"} delta=${Math.round(deltaY)} scroll=${Math.round(scroller.scrollTop)}/${Math.round(maxScrollTop)}`;
     return false;
   }
   scroller.scrollTop = nextScrollTop;
   event.__macSafariWheelBridged = true;
-  lastSafariWheelBridge = `bridged delta=${Math.round(event.deltaY)} scroll=${Math.round(nextScrollTop)}/${Math.round(maxScrollTop)}`;
+  lastSafariWheelBridge = `bridged ${event?.type || "wheel"} delta=${Math.round(deltaY)} scroll=${Math.round(nextScrollTop)}/${Math.round(maxScrollTop)}`;
   return true;
 }
 
@@ -986,6 +999,14 @@ function handleMacSafariWindowWheel(event) {
     handleIntroScrollInput();
   }
   event.preventDefault();
+}
+
+function registerMacSafariWheelBridge() {
+  const listenerOptions = { capture: true, passive: false };
+  [window, document, document.documentElement, document.body].filter(Boolean).forEach((target) => {
+    target.addEventListener("wheel", handleMacSafariWindowWheel, listenerOptions);
+    target.addEventListener("mousewheel", handleMacSafariWindowWheel, listenerOptions);
+  });
 }
 
 function updateResponsiveCopy() {
@@ -1733,7 +1754,7 @@ window.addEventListener("resize", buildGlyphField);
 window.addEventListener("resize", resizeIntroCanvas);
 window.addEventListener("mousemove", setMouseMotion);
 window.addEventListener("mouseleave", resetMouseMotion);
-window.addEventListener("wheel", handleMacSafariWindowWheel, { passive: false });
+registerMacSafariWheelBridge();
 if (introScrollJourney) {
   introScrollJourney.addEventListener("scroll", handleIntroScrollInput, { passive: true });
   introScrollJourney.addEventListener("wheel", (event) => {
