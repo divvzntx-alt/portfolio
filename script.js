@@ -1,4 +1,8 @@
 const brahmiDigits = ["𑁦", "𑁧", "𑁨", "𑁩", "𑁪", "𑁫", "𑁬", "𑁭", "𑁮", "𑁯"];
+if ("scrollRestoration" in history) {
+  history.scrollRestoration = "manual";
+}
+
 const brahmiGlyphs = [
   "𑀅",
   "𑀆",
@@ -901,9 +905,10 @@ function getViewportMode() {
 
 function isMacSafari() {
   const ua = window.navigator.userAgent || "";
-  const platform = window.navigator.platform || "";
   const isSafari = /Safari/i.test(ua) && !/Chrome|Chromium|CriOS|FxiOS|Edg/i.test(ua);
-  return isSafari && /Mac/i.test(platform);
+  if (!isSafari) return false;
+  const platform = window.navigator.platform || window.navigator.userAgentData?.platform || "";
+  return /Mac/i.test(platform) || (typeof window.safari !== "undefined" && !/Mobile/i.test(ua));
 }
 
 function applyViewportMode(mode = getViewportMode()) {
@@ -1008,6 +1013,60 @@ function registerMacSafariWheelBridge() {
     target.addEventListener("mousewheel", handleMacSafariWindowWheel, listenerOptions);
   });
 }
+
+let macSafariScrollProxy = null;
+
+function syncMacSafariProxyHeight() {
+  if (!macSafariScrollProxy?.scroller) return;
+  const scroller = macSafariScrollProxy.scroller;
+  const maxScrollTop = Math.max(0, scroller.scrollHeight - scroller.clientHeight);
+  document.documentElement.style.overflowY = "auto";
+  document.body.style.overflowY = "auto";
+  document.body.style.height = `${window.innerHeight + maxScrollTop}px`;
+  document.body.style.minHeight = `${window.innerHeight + maxScrollTop}px`;
+}
+
+function enableMacSafariScrollProxy(scroller, onScroll) {
+  if (!isMacSafari() || !scroller) return;
+  disableMacSafariScrollProxy(false);
+  const handleScroll = () => {
+    if (!macSafariScrollProxy?.scroller) return;
+    const maxScrollTop = Math.max(
+      0,
+      macSafariScrollProxy.scroller.scrollHeight - macSafariScrollProxy.scroller.clientHeight
+    );
+    const targetScrollTop = Math.max(0, Math.min(maxScrollTop, window.scrollY || window.pageYOffset || 0));
+    macSafariScrollProxy.scroller.scrollTop = targetScrollTop;
+    lastSafariWheelBridge = `proxy scroll=${Math.round(targetScrollTop)}`;
+    if (typeof macSafariScrollProxy.onScroll === "function") {
+      macSafariScrollProxy.onScroll();
+    }
+    if (macSafariScrollProxy.scroller === scrollJourney && typeof journeyFrameCallback === "function") {
+      window.requestAnimationFrame(() => journeyFrameCallback(performance.now()));
+    }
+  };
+  macSafariScrollProxy = { scroller, onScroll, handleScroll };
+  syncMacSafariProxyHeight();
+  window.scrollTo(0, scroller.scrollTop || 0);
+  window.addEventListener("scroll", handleScroll, { passive: true });
+}
+
+function disableMacSafariScrollProxy(resetScroll = true) {
+  if (!macSafariScrollProxy) return;
+  window.removeEventListener("scroll", macSafariScrollProxy.handleScroll);
+  macSafariScrollProxy = null;
+  document.body.style.height = "";
+  document.body.style.minHeight = "";
+  document.body.style.overflowY = "";
+  document.documentElement.style.overflowY = "";
+  if (resetScroll) {
+    window.scrollTo(0, 0);
+  }
+}
+
+window.addEventListener("resize", () => {
+  if (isMacSafari()) syncMacSafariProxyHeight();
+});
 
 function updateResponsiveCopy() {
   const useTouchCopy = viewportMode !== "desktop";
@@ -2247,6 +2306,8 @@ function activateIntroScrollMode() {
       clientHeight: Math.round(introScrollJourney.clientHeight),
       maxScrollTop: Math.round(introScrollJourney.scrollHeight - introScrollJourney.clientHeight),
     });
+    enableMacSafariScrollProxy(introScrollJourney, handleIntroScrollInput);
+    window.setTimeout(() => window.requestAnimationFrame(syncMacSafariProxyHeight), 200);
   }
 
   if (stream) {
@@ -2292,6 +2353,9 @@ function handoffFromIntroScroll() {
   document.body.classList.remove("is-intro-frame-ready");
   document.body.classList.add("is-intro-handoff-active");
   setIntroScrollPromptVisible(false);
+  if (!isMacSafari()) {
+    disableMacSafariScrollProxy(false);
+  }
   if (introScrollJourney) {
     introScrollJourney.classList.remove("is-active");
     introScrollJourney.setAttribute("aria-hidden", "true");
@@ -2369,6 +2433,8 @@ function beginScrollJourney() {
   }
   journey.classList.add("is-active");
   document.documentElement.style.overflow = "hidden";
+  enableMacSafariScrollProxy(journey, null);
+  window.setTimeout(() => window.requestAnimationFrame(syncMacSafariProxyHeight), 200);
 
   const scene2 = document.getElementById("scene2");
   const scene3 = document.getElementById("scene3");

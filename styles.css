@@ -98,18 +98,20 @@ body.is-tablet .hero {
   box-sizing: border-box;
 }
 
-html,
-body {
+html {
+  height: 100%;
   margin: 0;
-  min-height: 100%;
   background: #090d16;
 }
 
 body {
+  height: 100%;
+  min-height: 100%;
+  margin: 0;
   overflow: hidden;
+  background: #090d16;
   font-family: "Noto Sans", sans-serif;
   color: var(--text);
-  perspective: 1600px;
 }
 
 button {
@@ -214,6 +216,7 @@ button {
   overflow: hidden;
   pointer-events: none;
   transition: opacity 1200ms ease;
+  perspective: 1600px;
 }
 
 .screen-script-layer__surface,
@@ -1281,9 +1284,11 @@ body.is-tablet .scroll-prompt__wheel {
 .intro-scroll-journey {
   display: none;
   position: fixed;
-  inset: 0;
-  height: 100vh;
-  height: 100dvh;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  width: 100%;
   z-index: 15;
   overflow-y: auto;
   overflow-x: hidden;
@@ -1292,7 +1297,7 @@ body.is-tablet .scroll-prompt__wheel {
   -ms-overflow-style: none;
   overscroll-behavior: contain;
   touch-action: pan-y;
-  -webkit-overflow-scrolling: touch;
+  scroll-behavior: auto;
 }
 
 .intro-scroll-journey::-webkit-scrollbar {
@@ -1311,15 +1316,17 @@ body.is-tablet .scroll-prompt__wheel {
 .scroll-journey {
   display: none;
   position: fixed;
-  inset: 0;
-  height: 100vh;
-  height: 100dvh;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  width: 100%;
   z-index: 14;
   overflow-y: scroll;
   overflow-x: hidden;
   overscroll-behavior: contain;
   touch-action: pan-y;
-  -webkit-overflow-scrolling: touch;
+  scroll-behavior: auto;
 }
 
 .scroll-journey.is-active {
@@ -1327,6 +1334,7 @@ body.is-tablet .scroll-prompt__wheel {
 }
 
 .scroll-stage {
+  position: -webkit-sticky;
   position: sticky;
   top: 0;
   width: 100%;
@@ -1341,6 +1349,7 @@ body.is-mobile-portrait .scroll-journey,
 body.is-tablet .scroll-journey,
 body.is-mobile-portrait .scroll-stage,
 body.is-tablet .scroll-stage {
+  bottom: auto;
   height: var(--app-height);
 }
 
@@ -1428,6 +1437,7 @@ body.is-tablet .scene-canvas {
 }
 
 .contact-sanctum__sticky {
+  position: -webkit-sticky;
   position: sticky;
   top: 0;
   min-height: 100vh;
