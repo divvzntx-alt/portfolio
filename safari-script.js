@@ -3185,6 +3185,28 @@ function beginScrollJourney() {
     stream.setTarget(targetFrame, now);
   }
 
+  function createRailJumpReadiness(target) {
+    const stream = target.ensureRailStream ? target.ensureRailStream() : target.ensureStream?.();
+    const frameCount = target.railReadyCount ?? 120;
+    if (!stream || typeof stream.preloadRange !== "function" || typeof stream.countLoadedInRange !== "function") {
+      return null;
+    }
+    if (typeof stream.retainLoadedFrames === "function") {
+      stream.retainLoadedFrames();
+    }
+
+    return () => {
+      const now = performance.now();
+      stream.preloadRange(0, frameCount);
+      stream.setTarget(0, now);
+      stream.processQueue(now, true);
+      const loaded = stream.countLoadedInRange(0, frameCount);
+      const ready = loaded >= frameCount;
+      lastSafariReadiness = `rail ${target.sceneKey} ${loaded}/${frameCount} ready=${ready ? "yes" : "no"}`;
+      return ready;
+    };
+  }
+
   function warmStreamOnApproach(scrollTop, start, getStream, now, distance = 800, frameCount = 30, retainFullRange = false) {
     if (scrollTop <= start - distance) return;
     const stream = getStream();
@@ -3847,13 +3869,47 @@ function beginScrollJourney() {
   }
 
   const railTargetByProject = {
-    kindling: { scrollPos: s3Start + 1, content: thresholdSceneContent.s2,  sceneKey: "s2",  ensureStream: null },
-    thinktum: { scrollPos: s6Start + 1, content: thresholdSceneContent.s6,  sceneKey: "s6",  ensureStream: ensureS6Stream },
-    lpc:      { scrollPos: s8Start + 1, content: thresholdSceneContent.s8,  sceneKey: "s8",  ensureStream: ensureS8Stream },
-    reignite: { scrollPos: s10Start + 1, content: thresholdSceneContent.s10, sceneKey: "s10", ensureStream: ensureS10Stream },
-    ecnw:     { scrollPos: s13Start + 1, content: thresholdSceneContent.s13, sceneKey: "s13", ensureStream: ensureS13Stream },
-    contact:  { scrollPos: s15Start + 1, content: thresholdSceneContent.s15, sceneKey: "s15", ensureStream: ensureS15Stream },
+    kindling: { scrollPos: s3Start + 1, content: thresholdSceneContent.s2,  sceneKey: "s2",  ensureStream: null, ensureRailStream: () => s3Stream, railReadyCount: 120 },
+    thinktum: { scrollPos: s6Start + 1, content: thresholdSceneContent.s6,  sceneKey: "s6",  ensureStream: ensureS6Stream, railReadyCount: 120 },
+    lpc:      { scrollPos: s8Start + 1, content: thresholdSceneContent.s8,  sceneKey: "s8",  ensureStream: ensureS8Stream, railReadyCount: 120 },
+    reignite: { scrollPos: s10Start + 1, content: thresholdSceneContent.s10, sceneKey: "s10", ensureStream: ensureS10Stream, railReadyCount: 120 },
+    ecnw:     { scrollPos: s13Start + 1, content: thresholdSceneContent.s13, sceneKey: "s13", ensureStream: ensureS13Stream, railReadyCount: 120 },
+    contact:  { scrollPos: s15Start + 1, content: thresholdSceneContent.s15, sceneKey: "s15", ensureStream: ensureS15Stream, railReadyCount: 160 },
   };
+
+  let railJumpReadinessToken = 0;
+  let releaseRailJumpReadinessHold = null;
+  const blockRailJumpReadinessScroll = (event) => {
+    debugScrollHold("railJump", event);
+    event.preventDefault();
+  };
+  const blockRailJumpReadinessKey = (event) => {
+    const blockedKeys = ["ArrowUp", "ArrowDown", "PageUp", "PageDown", "Home", "End", " "];
+    if (!blockedKeys.includes(event.key)) return;
+    debugScrollHold("railJump:key", event);
+    event.preventDefault();
+  };
+  function startRailJumpReadinessHold() {
+    if (releaseRailJumpReadinessHold) {
+      releaseRailJumpReadinessHold();
+    }
+    const releaseTouchHold = pushTouchScrollHold();
+    journey.addEventListener("wheel", blockRailJumpReadinessScroll, { passive: false });
+    journey.addEventListener("touchmove", blockRailJumpReadinessScroll, { passive: false });
+    window.addEventListener("wheel", blockRailJumpReadinessScroll, { passive: false });
+    window.addEventListener("touchmove", blockRailJumpReadinessScroll, { passive: false });
+    window.addEventListener("keydown", blockRailJumpReadinessKey);
+    releaseRailJumpReadinessHold = () => {
+      releaseTouchHold();
+      journey.removeEventListener("wheel", blockRailJumpReadinessScroll);
+      journey.removeEventListener("touchmove", blockRailJumpReadinessScroll);
+      window.removeEventListener("wheel", blockRailJumpReadinessScroll);
+      window.removeEventListener("touchmove", blockRailJumpReadinessScroll);
+      window.removeEventListener("keydown", blockRailJumpReadinessKey);
+      releaseRailJumpReadinessHold = null;
+    };
+    return releaseRailJumpReadinessHold;
+  }
 
   journeyChromeGlyphs.forEach((btn) => {
     btn.addEventListener("click", () => {
@@ -3901,29 +3957,52 @@ function beginScrollJourney() {
       thresholdTransition.style.visibility = "visible";
       darkOverlay.style.opacity = "1";
 
-      railJumpTime = performance.now();
-      journey.scrollTop = target.scrollPos;
-      lastScrollTop = target.scrollPos;
-      pendingRailReverseClearScene = target.sceneKey;
-      activeThresholdTitleOwnerScene = target.sceneKey;
-      if (thresholdController && typeof thresholdController.setActiveTitleOwner === "function") {
-        thresholdController.setActiveTitleOwner(target.sceneKey);
-      }
+      const readiness = createRailJumpReadiness(target);
+      const startedAt = performance.now();
+      const token = ++railJumpReadinessToken;
+      startRailJumpReadinessHold();
 
-      sceneTitleShown.add(target.sceneKey);
-      reverseThresholdUnlocked.delete(target.sceneKey);
+      const commitRailJump = () => {
+        if (token !== railJumpReadinessToken) return;
+        if (releaseRailJumpReadinessHold) {
+          releaseRailJumpReadinessHold();
+        }
+        syncFramesToScrollPosition(target.scrollPos);
+        railJumpTime = performance.now();
+        journey.scrollTop = target.scrollPos;
+        lastScrollTop = target.scrollPos;
+        pendingRailReverseClearScene = target.sceneKey;
+        activeThresholdTitleOwnerScene = target.sceneKey;
+        if (thresholdController && typeof thresholdController.setActiveTitleOwner === "function") {
+          thresholdController.setActiveTitleOwner(target.sceneKey);
+        }
 
-      if (!scene3Unlocked) {
-        scene3Unlocked = true;
-        overlayShown = true;
-        scene3TitleTriggered = true;
-      }
+        sceneTitleShown.add(target.sceneKey);
+        reverseThresholdUnlocked.delete(target.sceneKey);
 
-      requestAnimationFrame(() => {
+        if (!scene3Unlocked) {
+          scene3Unlocked = true;
+          overlayShown = true;
+          scene3TitleTriggered = true;
+        }
+
         if (thresholdController && typeof thresholdController.runFlowTitle === "function") {
           thresholdController.runFlowTitle(target.content);
         }
-      });
+      };
+
+      const waitForRailJumpReadiness = () => {
+        if (token !== railJumpReadinessToken) return;
+        const ready = !readiness || readiness();
+        const timedOut = performance.now() - startedAt >= 9000;
+        if (!ready && !timedOut) {
+          window.setTimeout(waitForRailJumpReadiness, 90);
+          return;
+        }
+        requestAnimationFrame(commitRailJump);
+      };
+
+      waitForRailJumpReadiness();
     });
   });
 
