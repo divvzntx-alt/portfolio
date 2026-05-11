@@ -112,6 +112,7 @@ let lastIntroDebugLog = 0;
 let lastSafariWheelBridge = "none";
 let lastSafariReadiness = "none";
 let touchScrollHoldDepth = 0;
+let macSafariScrollProxy = null;
 
 function pushTouchScrollHold() {
   let released = false;
@@ -982,6 +983,56 @@ function getMacSafariWheelBridgeScroller() {
   return null;
 }
 
+function syncMacSafariProxyHeight() {
+  if (!macSafariScrollProxy?.scroller) return;
+  const scroller = macSafariScrollProxy.scroller;
+  const maxScrollTop = Math.max(0, scroller.scrollHeight - scroller.clientHeight);
+  document.documentElement.style.overflowY = "auto";
+  document.body.style.overflowY = "auto";
+  document.body.style.height = `${window.innerHeight + maxScrollTop}px`;
+  document.body.style.minHeight = `${window.innerHeight + maxScrollTop}px`;
+}
+
+function enableMacSafariScrollProxy(scroller, onScroll) {
+  if (!isMacSafari() || !scroller) return;
+  disableMacSafariScrollProxy(false);
+  const handleScroll = () => {
+    if (!macSafariScrollProxy?.scroller) return;
+    const targetScrollTop = Math.max(
+      0,
+      Math.min(
+        macSafariScrollProxy.scroller.scrollHeight - macSafariScrollProxy.scroller.clientHeight,
+        window.scrollY || window.pageYOffset || 0
+      )
+    );
+    macSafariScrollProxy.scroller.scrollTop = targetScrollTop;
+    lastSafariWheelBridge = `root-scroll scroll=${Math.round(targetScrollTop)}`;
+    if (typeof macSafariScrollProxy.onScroll === "function") {
+      macSafariScrollProxy.onScroll();
+    }
+    if (macSafariScrollProxy.scroller === scrollJourney && typeof journeyFrameCallback === "function") {
+      journeyFrameCallback(performance.now());
+    }
+  };
+  macSafariScrollProxy = { scroller, onScroll, handleScroll };
+  syncMacSafariProxyHeight();
+  window.scrollTo(0, scroller.scrollTop || 0);
+  window.addEventListener("scroll", handleScroll, { passive: true });
+}
+
+function disableMacSafariScrollProxy(resetScroll = true) {
+  if (!macSafariScrollProxy) return;
+  window.removeEventListener("scroll", macSafariScrollProxy.handleScroll);
+  macSafariScrollProxy = null;
+  document.body.style.height = "";
+  document.body.style.minHeight = "";
+  document.body.style.overflowY = "";
+  document.documentElement.style.overflowY = "";
+  if (resetScroll) {
+    window.scrollTo(0, 0);
+  }
+}
+
 function handleMacSafariWindowWheel(event) {
   if (event.__macSafariWheelBridged) return;
   if (shouldBypassMacSafariWheelBridge(event.target)) {
@@ -1750,6 +1801,7 @@ function startExperience() {
 window.addEventListener("resize", updateViewportVars);
 window.visualViewport?.addEventListener("resize", updateViewportVars);
 window.visualViewport?.addEventListener("scroll", updateViewportVars);
+window.addEventListener("resize", syncMacSafariProxyHeight);
 window.addEventListener("resize", buildGlyphField);
 window.addEventListener("resize", resizeIntroCanvas);
 window.addEventListener("mousemove", setMouseMotion);
@@ -2247,6 +2299,7 @@ function activateIntroScrollMode() {
       clientHeight: Math.round(introScrollJourney.clientHeight),
       maxScrollTop: Math.round(introScrollJourney.scrollHeight - introScrollJourney.clientHeight),
     });
+    enableMacSafariScrollProxy(introScrollJourney, handleIntroScrollInput);
   }
 
   if (stream) {
@@ -2297,6 +2350,7 @@ function handoffFromIntroScroll() {
     introScrollJourney.setAttribute("aria-hidden", "true");
     introScrollJourney.scrollTop = 0;
   }
+  disableMacSafariScrollProxy();
 
   const activateJourney = () => {
     document.body.classList.remove("is-intro-handoff-active");
@@ -2448,6 +2502,7 @@ function beginScrollJourney() {
   const s15ScrollRange = s16Start - s15Start;
   const s16ScrollRange = s16Height;
   journey.scrollTop = 0;
+  enableMacSafariScrollProxy(journey, null);
 
   const s2Canvas = document.getElementById("scene2Canvas");
   s2Canvas.width = window.innerWidth;
