@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Northwest by Brand — ecomm Northwest</title>
+<link href="https://fonts.googleapis.com/css2?family=Epilogue:wght@400;600;700;900&family=IBM+Plex+Sans:ital,wght@0,300;0,400;0,500;1,300&family=Red+Hat+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --lichen:  #D7D334;
+  --soil:    #611C28;
+  --timber:  #35545D;
+  --charcoal:#2F2F2F;
+  --fog:     #FFFDF9;
+  --epilogue: "Epilogue", sans-serif;
+  --plex:     "IBM Plex Sans", sans-serif;
+  --mono:     "Red Hat Mono", monospace;
+}
+html, body { height: 100%; overflow: hidden; background: var(--lichen); }
+::-webkit-scrollbar { display: none; }
+* { scrollbar-width: none; }
+.scroller { display: flex; height: 100vh; overflow-x: scroll; overflow-y: hidden; scroll-snap-type: x mandatory; }
+.track { display: flex; height: 100vh; align-items: stretch; }
+.panel { width: 100vw; height: 100vh; flex-shrink: 0; position: relative; overflow: hidden; padding: 52px 80px; display: flex; flex-direction: column; scroll-snap-align: start; }
+.meta { font-family: var(--plex); font-size: 11px; letter-spacing: 0.34em; text-transform: uppercase; opacity: 0.45; color: inherit; }
+
+/* P00 — HEADER */
+.p00 { background: var(--lichen); color: var(--charcoal); padding: 0; overflow: hidden; }
+.p00-inner { display: grid; grid-template-columns: 1fr 1fr; height: 100vh; width: 100vw; position: relative; }
+.p00-left { display: flex; flex-direction: column; justify-content: space-between; padding: 52px 48px 52px 80px; position: relative; z-index: 2; }
+.p00-wordmark { font-family: var(--epilogue); font-size: clamp(3.5rem,9vw,9rem); font-weight: 900; line-height: 0.84; letter-spacing: -0.04em; }
+.p00-tagline { font-family: var(--plex); font-size: clamp(1rem,1.3vw,1.3rem); font-style: italic; color: rgba(47,47,47,0.5); margin-top: 32px; font-weight: 300; line-height: 1.5; }
+.p00-right { position: relative; overflow: hidden; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; padding: 44px 48px 44px 48px; }
+.p00-right img { position: relative; bottom: auto; left: auto; transform: none; height: min(86vh, 980px); width: auto; max-width: 100%; display: block; filter: drop-shadow(-16px 16px 32px rgba(47,47,47,0.2)); }
+.p00-scroll { margin-top: 18px; align-self: flex-end; }
+.color-cell { border-radius: 0; overflow: visible; aspect-ratio: 538/316; }
+.color-cell img { width: 100%; height: 100%; object-fit: fill; display: block; border-radius: 0; }
+
+/* P01 */
+.p01 { background: var(--charcoal); color: var(--fog); justify-content: space-between; }
+.p01-num { font-family: var(--epilogue); font-size: 80px; font-weight: 900; line-height: 1; opacity: 0.28; }
+.p01-quote { font-family: var(--epilogue); font-size: clamp(1.8rem,3.8vw,4rem); font-weight: 700; line-height: 0.97; max-width: 820px; margin-top: 36px; }
+.p01-quote em { color: var(--lichen); font-style: normal; }
+.p01-body { font-family: var(--plex); font-size: 15px; line-height: 1.8; opacity: 0.55; max-width: 460px; margin-top: 24px; }
+
+/* P02 */
+.p02 { background: var(--soil); color: var(--fog); justify-content: center; }
+.p02-big { font-family: var(--epilogue); font-size: clamp(3rem,7.5vw,7.8rem); font-weight: 900; line-height: 0.88; letter-spacing: -0.03em; }
+.p02-big em { color: var(--lichen); font-style: normal; }
+.p02-small { font-family: var(--plex); font-size: 12px; letter-spacing: 0.3em; text-transform: uppercase; opacity: 0.38; margin-top: 40px; }
+
+/* P03 COLOR */
+.p03 { background: var(--fog); color: var(--charcoal); justify-content: space-between; }
+.p03-layout { display: grid; grid-template-columns: 1fr 1fr; gap: 60px; flex: 1; margin-top: 36px; margin-bottom: 28px; align-items: center; }
+.p03-heading { font-family: var(--epilogue); font-size: clamp(2rem,3.2vw,3.4rem); font-weight: 700; line-height: 1.0; }
+.p03-body { font-family: var(--plex); font-size: 15px; line-height: 1.75; opacity: 0.58; margin-top: 16px; }
+.color-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 10px; }
+.color-cell { overflow: hidden; aspect-ratio: 538/316; border-radius: 0; }
+.color-cell img { width: 100%; height: 100%; object-fit: fill; display: block; }
+
+/* P04 LOGO */
+.p04 { background: var(--timber); color: var(--fog); justify-content: space-between; }
+.p04-layout { display: grid; grid-template-columns: 1fr 1fr; gap: 60px; flex: 1; margin-top: 36px; margin-bottom: 28px; align-items: center; }
+.p04-heading { font-family: var(--epilogue); font-size: clamp(1.8rem,3vw,3.2rem); font-weight: 700; line-height: 1.0; }
+.p04-body { font-family: var(--plex); font-size: 15px; line-height: 1.75; opacity: 0.55; margin-top: 16px; max-width: 380px; }
+.p04-specs { font-family: var(--mono); font-size: 12px; opacity: 0.4; line-height: 1.9; margin-top: 20px; }
+.p04-logo-wrap { background: var(--fog); border-radius: 16px; padding: 40px; display: flex; align-items: center; justify-content: center; margin-bottom: 14px; }
+.p04-logo-wrap img { width: 100%; max-width: 340px; display: block; }
+.p04-grid-wrap { background: rgba(255,253,249,0.1); border-radius: 14px; padding: 24px; }
+.p04-grid-wrap img { width: 100%; display: block; }
+
+/* P05 PILLARS — LICHEN */
+.p05 { background: var(--lichen); color: var(--charcoal); }
+.p05-top { flex-shrink: 0; margin-bottom: 24px; }
+.p05-heading { font-family: var(--epilogue); font-size: clamp(1.6rem,2.6vw,2.6rem); font-weight: 700; line-height: 1.0; margin-top: 16px; }
+.pillars-grid { display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; gap: 14px; flex: 1; min-height: 0; }
+.pillar { background: var(--charcoal); color: var(--fog); border-radius: 14px; padding: 22px 20px; display: flex; flex-direction: column; gap: 7px; min-height: 0; overflow: hidden; }
+.pillar-num { font-family: var(--mono); font-size: 10px; letter-spacing: 0.2em; text-transform: uppercase; color: var(--lichen); }
+.pillar-title { font-family: var(--epilogue); font-size: clamp(0.95rem,1.5vw,1.4rem); font-weight: 700; line-height: 1.1; }
+.pillar-keys { font-family: var(--plex); font-size: 12px; line-height: 1.5; opacity: 0.48; }
+.pillar-quote { font-family: var(--plex); font-size: 11px; font-style: italic; opacity: 0.38; border-left: 2px solid var(--lichen); padding-left: 10px; }
+
+/* P06 TYPOGRAPHY */
+.p06 { background: var(--fog); color: var(--charcoal); }
+.p06-top { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 40px; flex-shrink: 0; margin-bottom: 28px; }
+.type-block { display: flex; flex-direction: column; gap: 8px; }
+.type-name { font-family: var(--plex); font-size: 10px; letter-spacing: 0.2em; text-transform: uppercase; opacity: 0.42; color: var(--charcoal); }
+.type-display-ep { font-family: var(--epilogue); font-size: clamp(2.8rem,5.5vw,6rem); font-weight: 900; line-height: 0.84; letter-spacing: -0.02em; color: var(--charcoal); }
+.type-display-pl { font-family: var(--plex); font-size: clamp(2rem,4vw,4.5rem); font-weight: 300; line-height: 0.9; color: var(--charcoal); }
+.type-display-mono { font-family: var(--mono); font-size: clamp(1.4rem,2.8vw,3.2rem); line-height: 0.9; opacity: 0.62; color: var(--charcoal); }
+.type-role { font-family: var(--plex); font-size: 12px; line-height: 1.6; opacity: 0.56; color: var(--charcoal); }
+.p06-image { flex: 1; min-height: 0; border-radius: 14px; overflow: hidden; background: rgba(53,84,93,0.08); }
+.p06-image img { width: 100%; height: 100%; object-fit: cover; display: block; }
+
+/* P07 BRAND IN ACTION */
+.p07 { background: var(--fog); color: var(--charcoal); }
+.p07-label { font-family: var(--epilogue); font-size: clamp(1.6rem,2.5vw,2.4rem); font-weight: 700; margin-bottom: 20px; flex-shrink: 0; color: var(--charcoal); }
+.p07-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px; flex: 1; min-height: 0; align-items: start; }
+.p07-frame { border-radius: 14px; overflow: hidden; background: rgba(53,84,93,0.06); padding: 12px; display: flex; align-items: center; justify-content: center; min-height: 0; }
+.p07-frame img { width: 100%; height: 100%; object-fit: contain; display: block; }
+.p07-caption { font-family: var(--mono); font-size: 10px; letter-spacing: 0.15em; text-transform: uppercase; opacity: 0.4; margin-top: 14px; flex-shrink: 0; display: grid; grid-template-columns: 1fr 1fr 1fr; color: var(--charcoal); }
+
+/* P08 CLOSING */
+.p08 { background: var(--soil); color: var(--fog); justify-content: space-between; }
+.p08-num { font-family: var(--epilogue); font-size: 80px; font-weight: 900; line-height: 1; opacity: 0.28; }
+.p08-heading { font-family: var(--epilogue); font-size: clamp(2.2rem,4.5vw,4.8rem); font-weight: 700; line-height: 0.95; max-width: 780px; margin-top: 24px; }
+.p08-heading em { color: var(--lichen); font-style: normal; }
+.p08-bottom { display: flex; align-items: flex-end; justify-content: space-between; gap: 32px; }
+.p08-note { font-family: var(--plex); font-size: 13px; line-height: 1.75; opacity: 0.48; max-width: 420px; }
+.p08-wordmark { font-family: var(--epilogue); font-size: clamp(2.8rem,6.5vw,7rem); font-weight: 900; line-height: 0.82; letter-spacing: -0.05em; opacity: 0.38; text-align: right; }
+.p08-wordmark em { color: var(--lichen); font-style: normal; }
+</style>
+</head>
+<body>
+<div class="scroller" id="scroller">
+<div class="track">
+
+<!-- P00 HEADER -->
+<section class="panel p00" style="padding:0;">
+  <div class="p00-inner">
+    <div class="p00-left">
+      <div>
+        <div class="p00-wordmark">Northwest<br>by Brand</div>
+        <div class="meta" style="margin-top:32px;">Brand Strategy · Visual Identity · Design System</div>
+        <div class="p00-tagline">A brand that doesn't just look like<br>the Pacific Northwest. It belongs there.</div>
+      </div>
+      <div style="display:flex;justify-content:flex-start;align-items:flex-end;">
+        <div class="meta" style="opacity:0.32;">ecomm Northwest · 2025</div>
+      </div>
+    </div>
+    <div class="p00-right">
+      <img src="iPhone 11 Pro.svg" alt="ecomm Northwest app">
+      <div class="meta p00-scroll" style="opacity:0.48;">scroll →</div>
+    </div>
+  </div>
+</section>
+
+<!-- P01 RESEARCH -->
+<section class="panel p01">
+  <div class="p01-num">01</div>
+  <div class="p01-quote">How do you build a brand that <em>belongs</em> to a place — without becoming a cliché of it?</div>
+  <p class="p01-body">ecomm Northwest is a community for founders, operators, and marketers driving ecommerce growth across the Pacific Northwest. The challenge wasn't to make it look outdoorsy. It was to make it feel rooted — like it could only have come from here.</p>
+  <div class="meta" style="margin-top:auto;padding-top:24px;">Research</div>
+</section>
+
+<!-- P02 REFRAME -->
+<section class="panel p02">
+  <div style="flex:1;display:flex;flex-direction:column;justify-content:center;">
+    <div class="p02-big">Rooted.<br><em>Yet</em><br>Sophisticated.</div>
+    <div class="p02-small">The two things the Pacific Northwest does better than anywhere else.</div>
+  </div>
+  <div class="meta" style="color:var(--fog);">02 — The reframe</div>
+</section>
+
+<!-- P03 COLOR -->
+<section class="panel p03">
+  <div class="meta">03 — The palette</div>
+  <div class="p03-layout">
+    <div>
+      <div class="p03-heading">Not chosen.<br>Excavated.</div>
+      <p class="p03-body">Every color was pulled from the Pacific Northwest landscape. Soil Maroon from the earth underfoot. Deep Timber from the forest canopy. Lichen Glow from the impossible yellow-green that grows on rocks. These aren't brand colors — they're field notes.</p>
+    </div>
+    <div class="color-grid">
+      <div class="color-cell"><img src="soil-maroon.svg" alt="Soil Maroon"></div>
+      <div class="color-cell"><img src="deep-timber.svg" alt="Deep Timber"></div>
+      <div class="color-cell"><img src="lichen-glow.svg" alt="Lichen Glow"></div>
+      <div class="color-cell"><img src="tide-clay.svg" alt="Tide Clay"></div>
+      <div class="color-cell"><img src="canyon-ember.svg" alt="Canyon Ember"></div>
+      <div class="color-cell"><img src="sunblush-petal.svg" alt="Sunblush Petal"></div>
+      <div class="color-cell"><img src="lake-slate.svg" alt="Lake Slate"></div>
+      <div class="color-cell"><img src="charcoal-black.svg" alt="Charcoal Black"></div>
+      <div class="color-cell"><img src="fog-cream.svg" alt="Fog Cream"></div>
+    </div>
+  </div>
+  <div class="meta">Color system</div>
+</section>
+
+<!-- P04 LOGO -->
+<section class="panel p04">
+  <div class="meta">04 — The logo</div>
+  <div class="p04-layout">
+    <div>
+      <div class="p04-heading">The linked C and O.<br>Connection built<br>into the mark.</div>
+      <p class="p04-body">The logo isn't a wordmark with a symbol bolted on. The linked C and O are the wordmark — a nod to connection, collaboration, and the shared progress that defines the community. Every spacing rule was built to protect that spark.</p>
+      <div class="p04-specs">Cap height: 40px<br>Clear space: 0.5x = 20px<br>Min width: 120px<br>Grid: 240 × 80px</div>
+    </div>
+    <div>
+      <div class="p04-logo-wrap">
+        <img src="primary-logo.svg" alt="ecomm Northwest primary logo">
+      </div>
+      <div class="p04-grid-wrap">
+        <img src="grid-construction.svg" alt="Logo construction grid">
+      </div>
+    </div>
+  </div>
+  <div class="meta">The mark</div>
+</section>
+
+<!-- P05 PILLARS -->
+<section class="panel p05">
+  <div class="p05-top">
+    <div class="meta">05 — Brand pillars</div>
+    <div class="p05-heading">Four pillars. One Northwest spirit.</div>
+  </div>
+  <div class="pillars-grid">
+    <div class="pillar">
+      <span class="pillar-num">01</span>
+      <div class="pillar-title">Rooted Sophistication</div>
+      <div class="pillar-keys">Northwest grounded · Resilient · Practical insight · Real</div>
+      <div class="pillar-quote">Sophistication comes from restraint — not decoration.</div>
+    </div>
+    <div class="pillar">
+      <span class="pillar-num">02</span>
+      <div class="pillar-title">Clarity with Backbone</div>
+      <div class="pillar-keys">Truthful · No-BS · Applied knowledge · Tactical, not theoretical</div>
+      <div class="pillar-quote">Clarity is respect. Progress comes from sharing, not posturing.</div>
+    </div>
+    <div class="pillar">
+      <span class="pillar-num">03</span>
+      <div class="pillar-title">Curated Connectedness</div>
+      <div class="pillar-keys">Collaborative spirit · Celebrate people · Intentional community</div>
+      <div class="pillar-quote">Not connection for connection's sake — shaped by shared values.</div>
+    </div>
+    <div class="pillar">
+      <span class="pillar-num">04</span>
+      <div class="pillar-title">Energetic Intelligence</div>
+      <div class="pillar-keys">Dynamic wit · Light, rhythmic · Perpetually curious · Momentum</div>
+      <div class="pillar-quote">Movement is how people connect, explore, and remember.</div>
+    </div>
+  </div>
+</section>
+
+<!-- P06 TYPOGRAPHY -->
+<section class="panel p06">
+  <div class="meta" style="flex-shrink:0;margin-bottom:20px;color:var(--charcoal);">06 — Typography</div>
+  <div class="p06-top">
+    <div class="type-block">
+      <div class="type-name">Display · Epilogue</div>
+      <div class="type-display-ep">Aa</div>
+      <div class="type-role">Headlines, hero statements. Bold + SemiBold. Geometric, confident.</div>
+    </div>
+    <div class="type-block">
+      <div class="type-name">Body · IBM Plex Sans</div>
+      <div class="type-display-pl">Aa</div>
+      <div class="type-role">All body copy, UI text. Regular + Medium. Functional, precise.</div>
+    </div>
+    <div class="type-block">
+      <div class="type-name">Utility · Red Hat Mono</div>
+      <div class="type-display-mono">Aa</div>
+      <div class="type-role">Labels, metadata, stats. Monospaced precision.</div>
+    </div>
+  </div>
+  <div class="p06-image">
+    <img src="font-example.svg" alt="Typography in use">
+  </div>
+</section>
+
+<!-- P07 BRAND IN ACTION -->
+<section class="panel p07">
+  <div class="p07-label">Brand in action.</div>
+  <div class="p07-grid">
+    <div class="p07-frame"><img src="social.svg" alt="Social post"></div>
+    <div class="p07-frame"><img src="type.svg" alt="Type example"></div>
+    <div class="p07-frame"><img src="card.svg" alt="Card example"></div>
+  </div>
+  <div class="p07-caption">
+    <span>Event poster</span>
+    <span>Social content</span>
+    <span>Brand card</span>
+  </div>
+</section>
+
+<!-- P08 CLOSING -->
+<section class="panel p08">
+  <div class="p08-num">08</div>
+  <div class="p08-heading">A brand that doesn't just look like the Pacific Northwest.<br>It <em>belongs</em> there.</div>
+  <div class="p08-bottom">
+    <div class="p08-note">The hardest decision was staying rooted without becoming rustic. Every color, every typographic choice, every pillar was tested against one question: does this feel like it could only have come from here?</div>
+    <div class="p08-wordmark">ecomm<br>North<em>west</em></div>
+  </div>
+</section>
+
+</div>
+</div>
+<script>
+  const s = document.getElementById("scroller");
+  document.addEventListener("keydown", e => {
+    if (e.key === "ArrowRight" || e.key === "ArrowDown") s.scrollBy({ left: window.innerWidth, behavior: "smooth" });
+    if (e.key === "ArrowLeft" || e.key === "ArrowUp") s.scrollBy({ left: -window.innerWidth, behavior: "smooth" });
+  });
+</script>
+</body>
+</html>

@@ -1,0 +1,941 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>RE-IGNITE — Campaign Identity Case Study</title>
+<link href="https://fonts.googleapis.com/css2?family=EB+Garamond:wght@400;500;600&family=Noto+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+*,
+*::before,
+*::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --cream: #F5EFE4;
+  --cream-2: #EDE5D8;
+  --cream-3: #FBF7EF;
+  --ink: #171717;
+  --muted: rgba(23,23,23,0.58);
+  --faint: rgba(23,23,23,0.12);
+  --red: #D40511;
+  --yellow: #FFCC00;
+  --dark: #101010;
+  --garamond: "EB Garamond", Georgia, serif;
+  --noto: "Noto Sans", Arial, sans-serif;
+}
+
+html, body {
+  height: 100%;
+  overflow: hidden;
+  background: var(--cream);
+  color: var(--ink);
+}
+
+::-webkit-scrollbar { display: none; }
+* { scrollbar-width: none; }
+
+.scroller {
+  height: 100vh;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scroll-snap-type: x mandatory;
+}
+
+.track {
+  display: flex;
+  height: 100vh;
+}
+
+.panel {
+  width: 100vw;
+  height: 100vh;
+  flex: 0 0 100vw;
+  scroll-snap-align: start;
+  position: relative;
+  overflow: hidden;
+  padding: 56px 72px;
+}
+
+.meta {
+  font-family: var(--noto);
+  font-size: 10px;
+  letter-spacing: 0.34em;
+  text-transform: uppercase;
+  font-weight: 500;
+  color: rgba(23,23,23,0.42);
+}
+
+.rule { height: 1px; background: rgba(23,23,23,0.13); width: 100%; }
+
+.kicker {
+  font-family: var(--noto);
+  font-size: 11px;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  color: var(--red);
+  font-weight: 800;
+}
+
+.body {
+  font-family: var(--noto);
+  font-size: 15px;
+  line-height: 1.85;
+  color: var(--muted);
+  max-width: 520px;
+}
+
+.small-body {
+  font-family: var(--noto);
+  font-size: 13px;
+  line-height: 1.75;
+  color: rgba(23,23,23,0.52);
+}
+
+/* P00 — Opening, no logo reveal yet */
+.p00 {
+  background: var(--cream);
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  gap: 28px;
+}
+
+#flameCanvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0.96;
+  pointer-events: none;
+}
+
+.p00::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(to top, rgba(245,239,228,0.02), rgba(245,239,228,0.72) 62%, rgba(245,239,228,0.94)),
+    radial-gradient(circle at 52% 98%, rgba(255,204,0,0.34), transparent 24%),
+    radial-gradient(circle at 50% 92%, rgba(255,166,0,0.18), transparent 28%),
+    radial-gradient(circle at 48% 88%, rgba(212,5,17,0.14), transparent 28%);
+  pointer-events: none;
+}
+
+.p00-top,
+.p00-bottom {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  position: relative;
+  z-index: 2;
+}
+
+.p00-main {
+  position: relative;
+  z-index: 2;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(340px, 0.58fr);
+  gap: 64px;
+  align-items: center;
+}
+
+.p00-title {
+  font-family: var(--noto);
+  font-size: clamp(5rem, 11.2vw, 13rem);
+  font-weight: 800;
+  letter-spacing: -0.08em;
+  line-height: 0.82;
+}
+
+.p00-title span { color: var(--red); }
+
+.p00-sub {
+  margin-top: 28px;
+  font-family: var(--noto);
+  font-size: clamp(1.05rem, 1.35vw, 1.3rem);
+  line-height: 1.65;
+  color: rgba(23,23,23,0.62);
+  max-width: 560px;
+}
+
+.p00-statement {
+  align-self: end;
+  border-left: 3px solid var(--red);
+  padding-left: 22px;
+  font-family: var(--noto);
+  font-size: clamp(1.15rem, 1.65vw, 1.75rem);
+  font-weight: 700;
+  line-height: 1.25;
+  letter-spacing: -0.035em;
+  color: rgba(23,23,23,0.84);
+}
+
+.p00-note {
+  font-family: var(--noto);
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(23,23,23,0.45);
+}
+
+/* Split narrative panels */
+.split {
+  background: var(--cream-3);
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  gap: 28px;
+}
+
+.split-main {
+  display: grid;
+  grid-template-columns: minmax(0, 0.92fr) minmax(360px, 0.72fr);
+  gap: 88px;
+  align-items: center;
+}
+
+.split h1 {
+  font-family: var(--noto);
+  font-size: clamp(2.6rem, 5.2vw, 6rem);
+  font-weight: 800;
+  letter-spacing: -0.065em;
+  line-height: 0.92;
+  max-width: 850px;
+}
+
+.split .pull {
+  font-family: var(--noto);
+  font-size: clamp(1.18rem, 1.65vw, 1.75rem);
+  font-weight: 700;
+  line-height: 1.28;
+  color: rgba(23,23,23,0.8);
+  border-left: 3px solid var(--red);
+  padding-left: 22px;
+  margin-top: 28px;
+}
+
+/* P02 */
+.p02 { background: var(--cream); }
+
+/* P03 System logic */
+.p03 {
+  background: var(--cream);
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  gap: 24px;
+}
+
+.p03-intro {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 40px;
+}
+
+.p03-title {
+  font-family: var(--noto);
+  font-size: clamp(2.2rem, 4.3vw, 4.8rem);
+  line-height: 0.95;
+  letter-spacing: -0.06em;
+  font-weight: 800;
+  max-width: 790px;
+}
+
+.p03-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1px;
+  background: rgba(23,23,23,0.12);
+  border: 1px solid rgba(23,23,23,0.12);
+  min-height: 0;
+}
+
+.value-card {
+  background: var(--cream);
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  min-height: 0;
+  padding: 32px;
+}
+
+.value-label {
+  font-family: var(--noto);
+  font-size: 10px;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+  color: var(--red);
+  font-weight: 800;
+}
+
+.value-img {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 0;
+  padding: 24px 8px;
+}
+
+.value-img img {
+  width: min(250px, 68%);
+  max-height: 38vh;
+  display: block;
+}
+
+.value-title {
+  font-family: var(--noto);
+  font-size: clamp(1.55rem, 2vw, 2.25rem);
+  font-weight: 800;
+  letter-spacing: -0.04em;
+  margin-bottom: 12px;
+}
+
+.value-copy {
+  font-family: var(--noto);
+  font-size: 13px;
+  line-height: 1.72;
+  color: rgba(23,23,23,0.56);
+  max-width: 320px;
+}
+
+/* P04 convergence logic */
+.p04 {
+  background: var(--cream-2);
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  gap: 26px;
+}
+
+.p04-main {
+  display: grid;
+  grid-template-columns: 0.84fr 1.1fr;
+  gap: 72px;
+  align-items: center;
+}
+
+.p04-copy h1 {
+  font-family: var(--noto);
+  font-size: clamp(2.2rem, 4.6vw, 5rem);
+  font-weight: 800;
+  letter-spacing: -0.06em;
+  line-height: 0.94;
+  margin-top: 18px;
+}
+
+.logic-stack {
+  display: grid;
+  gap: 14px;
+}
+
+.logic-row {
+  display: grid;
+  grid-template-columns: 112px 1fr;
+  gap: 22px;
+  padding: 20px 0;
+  border-bottom: 1px solid rgba(23,23,23,0.13);
+}
+
+.logic-key {
+  font-family: var(--noto);
+  font-size: 11px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--red);
+  font-weight: 800;
+}
+
+.logic-text {
+  font-family: var(--noto);
+  font-size: 15px;
+  line-height: 1.75;
+  color: rgba(23,23,23,0.62);
+}
+
+/* P05 design reasoning — no logo */
+.p05 {
+  background: var(--cream);
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  gap: 28px;
+}
+
+.p05-main {
+  display: grid;
+  grid-template-columns: 0.8fr 1.1fr;
+  gap: 72px;
+  align-items: center;
+}
+
+.p05 h1 {
+  font-family: var(--noto);
+  font-size: clamp(2.2rem, 4.6vw, 5.2rem);
+  font-weight: 800;
+  letter-spacing: -0.065em;
+  line-height: 0.94;
+}
+
+.decisions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1px;
+  background: rgba(23,23,23,0.13);
+  border: 1px solid rgba(23,23,23,0.13);
+}
+
+.decision {
+  background: var(--cream);
+  padding: 30px;
+  min-height: 260px;
+}
+
+.decision h3 {
+  font-family: var(--noto);
+  font-size: clamp(1.3rem, 1.8vw, 2rem);
+  letter-spacing: -0.04em;
+  line-height: 1.08;
+  margin: 16px 0 14px;
+}
+
+.decision p {
+  font-family: var(--noto);
+  font-size: 13px;
+  line-height: 1.78;
+  color: rgba(23,23,23,0.56);
+}
+
+/* P06 reveal — simple logo system */
+.p06 {
+  background: var(--cream-3);
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  gap: 24px;
+}
+
+.logo-system-stage {
+  min-height: 0;
+  display: grid;
+  grid-template-columns: 0.72fr 1.2fr;
+  gap: 56px;
+  align-items: center;
+}
+
+.logo-system-copy h1 {
+  font-family: var(--noto);
+  font-size: clamp(2.4rem, 4.8vw, 5.3rem);
+  font-weight: 800;
+  letter-spacing: -0.065em;
+  line-height: 0.94;
+  margin-top: 18px;
+}
+
+.logo-system-copy p {
+  margin-top: 24px;
+}
+
+.logo-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  grid-auto-rows: 1fr;
+  gap: 14px;
+  align-items: stretch;
+}
+
+.logo-card {
+  height: clamp(285px, 34vh, 360px);
+  border: 1px solid rgba(23,23,23,0.12);
+  background: var(--cream);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 34px;
+}
+
+.logo-card img {
+  width: 100%;
+  max-width: 290px;
+  max-height: 230px;
+  object-fit: contain;
+  display: block;
+}
+
+.logo-card-label {
+  margin-top: 10px;
+  font-family: var(--noto);
+  font-size: 10px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: rgba(23,23,23,0.42);
+  font-weight: 600;
+}
+
+/* P07 closing */
+
+.p07 {
+  background: var(--cream);
+  color: var(--ink);
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  gap: 28px;
+}
+
+.p07 .meta { color: rgba(23,23,23,0.42); }
+
+.p07-main {
+  display: grid;
+  grid-template-columns: 0.82fr 1fr;
+  gap: 72px;
+  align-items: center;
+}
+
+.p07 h1 {
+  font-family: var(--noto);
+  font-size: clamp(3.1rem, 7.5vw, 8.4rem);
+  font-weight: 850;
+  line-height: 0.88;
+  letter-spacing: -0.08em;
+  max-width: 980px;
+}
+
+.p07 h1 span { color: var(--red); }
+
+.p07 .body { color: rgba(23,23,23,0.58); }
+
+.outcome-stack {
+  display: grid;
+  gap: 14px;
+  align-content: center;
+}
+
+.outcome-video {
+  border: 1px solid rgba(23,23,23,0.12);
+  background: rgba(255,255,255,0.22);
+  padding: 14px;
+}
+
+.outcome-video video {
+  width: 100%;
+  display: block;
+  background: var(--cream);
+}
+
+.closing-system {
+  display: grid;
+  gap: 1px;
+  background: rgba(23,23,23,0.14);
+  border: 1px solid rgba(23,23,23,0.14);
+}
+
+.close-row {
+  background: var(--cream);
+  display: grid;
+  grid-template-columns: 86px 1fr;
+  gap: 16px;
+  align-items: center;
+  padding: 16px 18px;
+}
+
+.close-row img {
+  width: 68px;
+  opacity: 0.92;
+}
+
+.close-row div {
+  font-family: var(--noto);
+  font-size: 11px;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: rgba(23,23,23,0.54);
+}
+
+@media (max-width: 1100px) {
+  .panel { padding: 42px; }
+  .p00-main,
+  .split-main,
+  .p04-main,
+  .p05-main,
+  .p07-main { grid-template-columns: 1fr; gap: 36px; }
+  .p03-grid { grid-template-columns: 1fr; overflow: auto; }
+  .value-img img { max-height: 220px; }
+  .decisions { grid-template-columns: 1fr; }
+}
+</style>
+</head>
+
+<body>
+<div class="scroller" id="scroller">
+  <div class="track">
+
+    <section class="panel p00">
+      <canvas id="flameCanvas"></canvas>
+
+      <div class="p00-top">
+        <div class="meta">Campaign Identity · Logo System · 2024</div>
+        <div class="meta">Scroll →</div>
+      </div>
+
+      <div class="p00-main">
+        <div>
+          <div class="p00-title">RE-<span>IGNITE</span></div>
+          <div class="p00-sub">
+            A campaign identity for a logistics team entering a new chapter — built to turn abstract values into a shared language people could recognize, own, and rally behind.
+          </div>
+        </div>
+
+        <div class="p00-statement">
+          The work was not to make a mark look energetic. It was to give renewal a form.
+        </div>
+      </div>
+
+      <div class="p00-bottom">
+        <div class="p00-note">Igniting Growth Beyond Limits</div>
+        <div class="p00-note">Passion · Position · Pride</div>
+      </div>
+    </section>
+
+    <section class="panel split">
+      <div class="meta">01 — The problem</div>
+      <div class="split-main">
+        <div>
+          <h1>The ask sounded simple. The real problem was alignment.</h1>
+          <div class="pull">A logo alone would not move people. The identity needed to give the team a shared language for what they were becoming.</div>
+        </div>
+        <p class="body">
+          The campaign was built during a moment of transition. A new leadership chapter needed more than visual polish — it needed belief, direction, and ownership. The challenge was to avoid a generic “growth” mark and build something specific enough for the team to see themselves in it.
+        </p>
+      </div>
+      <div class="rule"></div>
+    </section>
+
+    <section class="panel split p02">
+      <div class="meta">02 — The reframe</div>
+      <div class="split-main">
+        <div>
+          <h1>Nature was not the moodboard. It was the strategy.</h1>
+          <div class="pull">Air, land, and ocean already shaped the work. Sri Lanka’s landscape became the clearest way to express harmony, movement, and growth.</div>
+        </div>
+        <p class="body">
+          The original idea came from the relationship between logistics and landscape: moving across systems, terrains, and forces that only work when they stay in balance. That made nature more than a visual reference. It became the structure for the identity.
+        </p>
+      </div>
+      <div class="rule"></div>
+    </section>
+
+    <section class="panel p03">
+      <div class="p03-intro">
+        <div>
+          <div class="kicker">03 — Symbolic system</div>
+          <div class="p03-title">The values were found inside the landscape.</div>
+        </div>
+        <p class="body">
+          This became the core design move: the identity was not assembled from decorative elements. Each natural form carried a specific strategic role.
+        </p>
+      </div>
+
+      <div class="p03-grid">
+        <article class="value-card">
+          <div class="value-label">Passion · Trees</div>
+          <div class="value-img"><img src="passion.svg" alt="Trees symbol for Passion" /></div>
+          <div>
+            <div class="value-title">Growth with roots.</div>
+            <div class="value-copy">Passion was expressed through resilience, collective growth, and the strength that comes from rising together — not momentary energy.</div>
+          </div>
+        </article>
+
+        <article class="value-card">
+          <div class="value-label">Position · Mountains</div>
+          <div class="value-img"><img src="position.svg" alt="Mountains symbol for Position" /></div>
+          <div>
+            <div class="value-title">Leadership through elevation.</div>
+            <div class="value-copy">Position became a climb: strategic height, determination, and the confidence to lead from a stronger vantage point.</div>
+          </div>
+        </article>
+
+        <article class="value-card">
+          <div class="value-label">Pride · Ocean</div>
+          <div class="value-img"><img src="pride.svg" alt="Ocean symbol for Pride" /></div>
+          <div>
+            <div class="value-title">Depth in motion.</div>
+            <div class="value-copy">Pride was not treated as ego. It became collective force — deep, continuous, and connected to every movement of the organization.</div>
+          </div>
+        </article>
+      </div>
+
+      <div class="meta">Trees · Mountains · Ocean</div>
+    </section>
+
+    <section class="panel p04">
+      <div class="meta">04 — The design decision</div>
+      <div class="p04-main">
+        <div class="p04-copy">
+          <div class="kicker">The essence of everything</div>
+          <h1>Specificity made the identity stronger.</h1>
+          <p class="body" style="margin-top:24px;">
+            The safer direction would have been abstraction: a spark, an arrow, a generic growth symbol. The stronger decision was to stay specific — to let Sri Lanka’s landscape carry the meaning.
+          </p>
+        </div>
+
+        <div class="logic-stack">
+          <div class="logic-row">
+            <div class="logic-key">Warmth</div>
+            <div class="logic-text">The spark and sun gave the campaign a sense of renewal — a new dawn rather than a corporate reset.</div>
+          </div>
+          <div class="logic-row">
+            <div class="logic-key">Strength</div>
+            <div class="logic-text">The trees and mountains gave the mark vertical energy: resilience, ascent, and the discipline to grow.</div>
+          </div>
+          <div class="logic-row">
+            <div class="logic-key">Movement</div>
+            <div class="logic-text">The ocean introduced continuity and force, connecting every part of the system into one visual rhythm.</div>
+          </div>
+          <div class="logic-row">
+            <div class="logic-key">Belonging</div>
+            <div class="logic-text">The final identity worked because the team could recognize the land, the work, and themselves inside the mark.</div>
+          </div>
+        </div>
+      </div>
+      <div class="rule"></div>
+    </section>
+
+    <section class="panel p05">
+      <div class="meta">05 — System decisions</div>
+      <div class="p05-main">
+        <div>
+          <div class="kicker">From values to visual logic</div>
+          <h1>The mark had to earn its emotion.</h1>
+          <p class="body" style="margin-top:28px;">
+            The strongest idea in the project was not the final logo itself. It was the chain of reasoning that made the final logo feel inevitable.
+          </p>
+        </div>
+
+        <div class="decisions">
+          <div class="decision">
+            <div class="kicker">Decision 01</div>
+            <h3>Use recognition instead of abstraction.</h3>
+            <p>A generic growth symbol could have looked professional, but it would not have felt owned. The landscape gave the identity memory, place, and emotional specificity.</p>
+          </div>
+          <div class="decision">
+            <div class="kicker">Decision 02</div>
+            <h3>Let the values emerge from the forms.</h3>
+            <p>Passion, Position, and Pride were not pasted onto symbols. The symbols were chosen because they already carried the values visually and culturally.</p>
+          </div>
+          <div class="decision">
+            <div class="kicker">Decision 03</div>
+            <h3>Work inside existing constraints.</h3>
+            <p>The brand colors and type direction were treated as fixed conditions. The job was to give those constraints a stronger story, not fight them.</p>
+          </div>
+          <div class="decision">
+            <div class="kicker">Decision 04</div>
+            <h3>Build toward one reveal.</h3>
+            <p>The full logo should appear only after the logic has been established. The reveal matters because the viewer understands what every part is doing.</p>
+          </div>
+        </div>
+      </div>
+      <div class="rule"></div>
+    </section>
+
+    <section class="panel p06">
+      <div class="meta">06 — Logo system</div>
+
+      <div class="logo-system-stage">
+        <div class="logo-system-copy">
+          <div class="kicker">The reveal</div>
+          <h1>The mark resolves into a system.</h1>
+          <p class="body">
+            Once the symbolic logic is established, the identity can finally appear as a practical logo system — primary and secondary, color and black — without losing the story inside it.
+          </p>
+        </div>
+
+        <div class="logo-grid">
+          <div>
+            <div class="logo-card"><img src="primary-logo.svg" alt="Primary color logo" /></div>
+            <div class="logo-card-label">Primary · Color</div>
+          </div>
+          <div>
+            <div class="logo-card"><img src="primary-white-logo.svg" alt="Primary black logo" /></div>
+            <div class="logo-card-label">Primary · Black</div>
+          </div>
+          <div>
+            <div class="logo-card"><img src="secondary-logo.svg" alt="Secondary color logo" /></div>
+            <div class="logo-card-label">Secondary · Color</div>
+          </div>
+          <div>
+            <div class="logo-card"><img src="secondary-white-logo.svg" alt="Secondary black logo" /></div>
+            <div class="logo-card-label">Secondary · Black</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="rule"></div>
+    </section>
+
+    <section class="panel p07">
+      <div class="meta">07 — Outcome</div>
+      <div class="p07-main">
+        <div>
+          <h1>Not a logo. <span>A symbol.</span></h1>
+          <p class="body" style="margin-top:34px;">
+            The identity landed because it did not ask the team to adopt a message. It gave shape to something already present: passion, position, and pride — reignited through a landscape they could call their own.
+          </p>
+        </div>
+
+        <div class="outcome-stack">
+          <div class="outcome-video">
+            <video controls autoplay muted loop playsinline>
+              <source src="./logo-anim.mov" type="video/mp4">
+              <source src="./logo-anim.mov" type="video/quicktime">
+            </video>
+          </div>
+
+          <div class="closing-system">
+            <div class="close-row">
+              <img src="passion.svg" alt="" />
+              <div>Passion · Growth with roots</div>
+            </div>
+            <div class="close-row">
+              <img src="position.svg" alt="" />
+              <div>Position · Leadership through elevation</div>
+            </div>
+            <div class="close-row">
+              <img src="pride.svg" alt="" />
+              <div>Pride · Depth in motion</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="meta">New Dawn · Endless Possibilities</div>
+    </section>
+
+  </div>
+</div>
+
+<script>
+const scroller = document.getElementById("scroller");
+document.addEventListener("keydown", (e) => {
+  if (e.key === "ArrowRight" || e.key === "ArrowDown") {
+    scroller.scrollBy({ left: window.innerWidth, behavior: "smooth" });
+  }
+  if (e.key === "ArrowLeft" || e.key === "ArrowUp") {
+    scroller.scrollBy({ left: -window.innerWidth, behavior: "smooth" });
+  }
+});
+
+/* Subtle canvas flame/rising heat effect */
+(function initFlame() {
+  const canvas = document.getElementById("flameCanvas");
+  const openingPanel = document.querySelector(".panel.p00");
+  if (!canvas || !openingPanel) return;
+  const ctx = canvas.getContext("2d");
+  let w, h, dpr;
+  let particles = [];
+  let rafId = 0;
+  let flameActive = true;
+
+  function resize() {
+    dpr = Math.min(window.devicePixelRatio || 1, 2);
+    w = canvas.clientWidth = window.innerWidth;
+    h = canvas.clientHeight = window.innerHeight;
+    canvas.width = w * dpr;
+    canvas.height = h * dpr;
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    particles = [];
+    for (let i = 0; i < 240; i++) spawn(true);
+  }
+
+  function spawn(initial=false) {
+    const spread = w * 0.96;
+    particles.push({
+      x: w * 0.5 + (Math.random() - 0.5) * spread,
+      y: initial ? h * (0.55 + Math.random() * 0.5) : h + Math.random() * 40,
+      vx: (Math.random() - 0.5) * 0.22,
+      vy: -0.52 - Math.random() * 1.18,
+      r: 1.8 + Math.random() * 6.4,
+      life: initial ? Math.random() : 1,
+      decay: 0.0038 + Math.random() * 0.007,
+      phase: Math.random() * Math.PI * 2
+    });
+  }
+
+  function draw(t) {
+    if (!flameActive) {
+      rafId = 0;
+      return;
+    }
+
+    ctx.clearRect(0, 0, w, h);
+
+    const grd = ctx.createLinearGradient(0, h, 0, h * 0.52);
+    grd.addColorStop(0, "rgba(255,204,0,0.28)");
+    grd.addColorStop(0.18, "rgba(255,145,0,0.15)");
+    grd.addColorStop(0.34, "rgba(212,5,17,0.12)");
+    grd.addColorStop(0.62, "rgba(255,204,0,0.03)");
+    grd.addColorStop(1, "rgba(255,204,0,0)");
+    ctx.fillStyle = grd;
+    ctx.fillRect(0, 0, w, h);
+
+    ctx.globalCompositeOperation = "multiply";
+    for (const p of particles) {
+      p.phase += 0.018;
+      p.x += p.vx + Math.sin(p.phase + t * 0.0008) * 0.28;
+      p.y += p.vy;
+      p.life -= p.decay;
+
+      const alpha = Math.max(0, Math.min(1, p.life));
+      const size = p.r * (1.18 + (1 - alpha) * 2.5);
+
+      const g = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, size * 7);
+      g.addColorStop(0, `rgba(255,204,0,${0.24 * alpha})`);
+      g.addColorStop(0.18, `rgba(255,160,0,${0.16 * alpha})`);
+      g.addColorStop(0.42, `rgba(212,5,17,${0.1 * alpha})`);
+      g.addColorStop(1, `rgba(212,5,17,0)`);
+      ctx.fillStyle = g;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, size * 7, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.globalCompositeOperation = "source-over";
+
+    particles = particles.filter(p => p.life > 0 && p.y > -120);
+    while (particles.length < 240) spawn();
+
+    rafId = requestAnimationFrame(draw);
+  }
+
+  function setFlameActive(nextActive) {
+    if (flameActive === nextActive) return;
+    flameActive = nextActive;
+
+    if (flameActive) {
+      canvas.style.opacity = "0.96";
+      if (!particles.length) {
+        for (let i = 0; i < 240; i++) spawn(true);
+      }
+      if (!rafId) {
+        rafId = requestAnimationFrame(draw);
+      }
+      return;
+    }
+
+    canvas.style.opacity = "0";
+    if (rafId) {
+      cancelAnimationFrame(rafId);
+      rafId = 0;
+    }
+    ctx.clearRect(0, 0, w, h);
+  }
+
+  resize();
+  window.addEventListener("resize", resize);
+
+  const observer = new IntersectionObserver(
+    ([entry]) => {
+      setFlameActive(entry.isIntersecting && entry.intersectionRatio > 0.55);
+    },
+    {
+      root: scroller,
+      threshold: [0, 0.55, 0.8],
+    }
+  );
+
+  observer.observe(openingPanel);
+  rafId = requestAnimationFrame(draw);
+})();
+</script>
+</body>
+</html>

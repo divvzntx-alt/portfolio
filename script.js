@@ -874,12 +874,48 @@ function getAppViewportHeight() {
 
 function bridgeWheelToScroller(scroller, event) {
   if (!scroller || !isMacSafari()) return false;
+  if (event.__macSafariWheelBridged) return false;
   const maxScrollTop = Math.max(0, scroller.scrollHeight - scroller.clientHeight);
   if (maxScrollTop <= 0) return false;
   const nextScrollTop = Math.max(0, Math.min(maxScrollTop, scroller.scrollTop + event.deltaY));
   if (nextScrollTop === scroller.scrollTop) return false;
   scroller.scrollTop = nextScrollTop;
+  event.__macSafariWheelBridged = true;
   return true;
+}
+
+function shouldBypassMacSafariWheelBridge(target) {
+  return Boolean(target?.closest?.(
+    "a, button, input, textarea, select, [role='button'], .journey-mobile-menu, .project-popover, .case-study-overlay, .about-overlay"
+  ));
+}
+
+function getMacSafariWheelBridgeScroller() {
+  if (!isMacSafari() || touchScrollHoldDepth > 0) return null;
+  if (
+    introScrollActive &&
+    introScrollJourney &&
+    introScrollJourney.classList.contains("is-active") &&
+    !introScrollTransitioning
+  ) {
+    return introScrollJourney;
+  }
+  if (scrollJourney?.classList.contains("is-active")) {
+    return scrollJourney;
+  }
+  return null;
+}
+
+function handleMacSafariWindowWheel(event) {
+  if (event.__macSafariWheelBridged || shouldBypassMacSafariWheelBridge(event.target)) return;
+  const scroller = getMacSafariWheelBridgeScroller();
+  if (!scroller) return;
+  const bridged = bridgeWheelToScroller(scroller, event);
+  if (!bridged) return;
+  if (scroller === introScrollJourney) {
+    handleIntroScrollInput();
+  }
+  event.preventDefault();
 }
 
 function updateResponsiveCopy() {
@@ -1143,22 +1179,11 @@ function closeCaseStudyOverlay() {
   caseStudyOverlay.classList.remove("is-visible");
   caseStudyOverlay.setAttribute("aria-hidden", "true");
 
-  const releaseJourneyWhenReady = () => {
-    if (!journey) return;
-    const readiness = pendingCaseStudyReadiness;
-    if (!readiness || readiness()) {
-      pendingCaseStudyReadiness = null;
-      clearCaseStudyReadinessHold();
-      journey.style.overflowY = "scroll";
-      return;
-    }
-    journey.style.overflowY = "hidden";
-    if (!releaseCaseStudyReadinessTouchHold) {
-      releaseCaseStudyReadinessTouchHold = pushTouchScrollHold();
-    }
-    window.setTimeout(releaseJourneyWhenReady, 120);
-  };
-  releaseJourneyWhenReady();
+  pendingCaseStudyReadiness = null;
+  clearCaseStudyReadinessHold();
+  if (journey) {
+    journey.style.overflowY = "scroll";
+  }
 
   if (caseStudyOverlayUnloadTimer) {
     window.clearTimeout(caseStudyOverlayUnloadTimer);
@@ -1638,6 +1663,7 @@ window.addEventListener("resize", buildGlyphField);
 window.addEventListener("resize", resizeIntroCanvas);
 window.addEventListener("mousemove", setMouseMotion);
 window.addEventListener("mouseleave", resetMouseMotion);
+window.addEventListener("wheel", handleMacSafariWindowWheel, { passive: false });
 if (introScrollJourney) {
   introScrollJourney.addEventListener("scroll", handleIntroScrollInput, { passive: true });
   introScrollJourney.addEventListener("wheel", (event) => {
