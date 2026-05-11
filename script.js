@@ -2960,11 +2960,6 @@ function beginScrollJourney() {
   }
 
   function warmUpcomingScenes(scrollTop, now) {
-    if (viewportMode === "mobile" || viewportMode === "tablet") {
-      warmStreamOnApproach(scrollTop, s10Start, () => ensureS10Stream(), now, 3600, 120);
-      warmStreamOnApproach(scrollTop, s13Start, () => ensureS13Stream(), now, 3600, 120);
-      warmStreamOnApproach(scrollTop, s15Start, () => ensureS15Stream(), now, 5600, 200, true);
-    }
     warmStreamOnApproach(scrollTop, s3Start, () => s3Stream, now);
     warmStreamOnApproach(scrollTop, s4Start, () => ensureS4Stream(), now);
     warmStreamOnApproach(scrollTop, s5Start, () => ensureS5Stream(), now);
