@@ -1281,9 +1281,11 @@ body.is-tablet .scroll-prompt__wheel {
 .intro-scroll-journey {
   display: none;
   position: fixed;
-  inset: 0;
-  height: 100vh;
-  height: 100dvh;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  width: 100%;
   z-index: 15;
   overflow-y: auto;
   overflow-x: hidden;
@@ -1311,9 +1313,11 @@ body.is-tablet .scroll-prompt__wheel {
 .scroll-journey {
   display: none;
   position: fixed;
-  inset: 0;
-  height: 100vh;
-  height: 100dvh;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  width: 100%;
   z-index: 14;
   overflow-y: scroll;
   overflow-x: hidden;
@@ -1342,6 +1346,7 @@ body.is-mobile-portrait .scroll-journey,
 body.is-tablet .scroll-journey,
 body.is-mobile-portrait .scroll-stage,
 body.is-tablet .scroll-stage {
+  bottom: auto;
   height: var(--app-height);
 }
 
