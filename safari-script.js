@@ -3054,33 +3054,29 @@ function beginScrollJourney() {
   }
 
   function createProjectHoldReadiness(sceneKey) {
-    const useTouchReadiness = viewportMode === "mobile" || viewportMode === "tablet";
     const readinessMap = {
-      s4: { getStream: ensureS6Stream, touchReadyCount: 40, count: 120 },
-      s7: { getStream: ensureS8Stream, touchReadyCount: 36, count: 120 },
-      s9: { getStream: ensureS10Stream, touchReadyCount: 60, count: 120 },
-      s11: { getStream: ensureS13Stream, touchReadyCount: 60, count: 120 },
-      s14: { getStream: ensureS15Stream, touchReadyCount: 100, count: 160 },
+      s4: { getStream: ensureS6Stream, count: 120 },
+      s7: { getStream: ensureS8Stream, count: 120 },
+      s9: { getStream: ensureS10Stream, count: 120 },
+      s11: { getStream: ensureS13Stream, count: 120 },
+      s14: { getStream: ensureS15Stream, count: 160 },
     };
     const target = readinessMap[sceneKey];
     if (!target) return null;
     const stream = target.getStream();
     if (!stream) return null;
-    if (useTouchReadiness && typeof stream.retainLoadedFrames === "function") {
+    if (typeof stream.retainLoadedFrames === "function") {
       stream.retainLoadedFrames();
     }
-    const readyCount = useTouchReadiness
-      ? target.touchReadyCount
-      : Math.min(target.count, Math.ceil(target.count * 0.88));
 
     return () => {
       const now = performance.now();
       stream.preloadRange(0, target.count);
       stream.setTarget(0, now);
       stream.processQueue(now, true);
-      const loaded = stream.countLoadedInRange(0, useTouchReadiness ? readyCount : target.count);
-      const ready = loaded >= readyCount;
-      lastSafariReadiness = `${sceneKey} ${loaded}/${readyCount} ready=${ready ? "yes" : "no"}`;
+      const loaded = stream.countLoadedInRange(0, target.count);
+      const ready = loaded >= target.count;
+      lastSafariReadiness = `${sceneKey} ${loaded}/${target.count} ready=${ready ? "yes" : "no"}`;
       return ready;
     };
   }
@@ -3139,7 +3135,7 @@ function beginScrollJourney() {
       scrollDismiss: !isReverse,
       holdDuration,
       holdUntilReady: isReverse ? null : createProjectHoldReadiness(sceneKey),
-      maxHoldDuration: isReverse || viewportMode === "desktop" ? (isReverse ? holdDuration : 5200) : Number.POSITIVE_INFINITY,
+      maxHoldDuration: isReverse ? holdDuration : 12000,
       autoDismissAfter: 0,
       entranceDelay: 0,
       entranceDuration: firstTime ? 360 : 280,
