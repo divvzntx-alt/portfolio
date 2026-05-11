@@ -1391,11 +1391,14 @@ function startAutoFlash() {
 
 function updateViewportVars() {
   applyViewportMode();
+  const visualViewportHeight = window.visualViewport?.height;
+  const appHeight = Number.isFinite(visualViewportHeight) ? visualViewportHeight : window.innerHeight;
   const maxWidth = Math.min(window.innerWidth, window.innerHeight * (16 / 9));
   const maxHeight = maxWidth / (16 / 9);
   const marginX = window.innerWidth > 900 ? window.innerWidth * 0.56 : window.innerWidth * 0.78;
   const marginY = (window.innerHeight - (window.innerWidth > 900 ? 160 : 224)) * (16 / 9);
   const introWidth = Math.min(marginX, marginY, maxWidth);
+  document.documentElement.style.setProperty("--app-height", `${appHeight}px`);
   document.documentElement.style.setProperty("--final-width", `${maxWidth}px`);
   document.documentElement.style.setProperty("--final-height", `${maxHeight}px`);
 }
@@ -1606,6 +1609,8 @@ function startExperience() {
 }
 
 window.addEventListener("resize", updateViewportVars);
+window.visualViewport?.addEventListener("resize", updateViewportVars);
+window.visualViewport?.addEventListener("scroll", updateViewportVars);
 window.addEventListener("resize", buildGlyphField);
 window.addEventListener("resize", resizeIntroCanvas);
 window.addEventListener("mousemove", setMouseMotion);
