@@ -6,9 +6,6 @@
   --line: rgba(255, 255, 255, 0.08);
   --accent: rgba(213, 221, 235, 0.84);
   --app-height: 100dvh;
-  --app-width: 100vw;
-  --app-top: 0px;
-  --app-left: 0px;
   --final-width: min(100vw, calc(100vh * 1.7777778));
   --final-height: calc(var(--final-width) / 1.7777778);
   --intro-scale: 0.56;
@@ -1359,11 +1356,10 @@ body.is-mobile-portrait .case-study-overlay,
 body.is-tablet .case-study-overlay,
 body.is-mobile-portrait .about-overlay,
 body.is-tablet .about-overlay {
-  top: var(--app-top);
-  right: auto;
+  top: 0;
+  right: 0;
   bottom: auto;
-  left: var(--app-left);
-  width: var(--app-width);
+  left: 0;
   height: var(--app-height);
   min-height: var(--app-height);
 }
