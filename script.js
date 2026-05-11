@@ -906,6 +906,10 @@ function isMacSafari() {
   return isSafari && /Mac/i.test(platform);
 }
 
+function isDesktopMacSafariAltEligible() {
+  return isMacSafari() && getViewportMode() === "desktop";
+}
+
 function applyViewportMode(mode = getViewportMode()) {
   viewportMode = mode;
   document.body.classList.toggle("is-mobile-portrait", mode === "mobile");
@@ -1777,6 +1781,9 @@ if (scrollJourney) {
     bridgeWheelToScroller(scrollJourney, event);
   }, { passive: true });
   bindTouchScroller(scrollJourney);
+}
+if (isDesktopMacSafariAltEligible()) {
+  document.body.classList.add("is-mac-safari-alt");
 }
 walkButton.addEventListener("click", () => {
   setSoundEnabled(true, true);
