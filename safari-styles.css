@@ -5,6 +5,7 @@
   --dim: rgba(224, 228, 233, 0.62);
   --line: rgba(255, 255, 255, 0.08);
   --accent: rgba(213, 221, 235, 0.84);
+  --app-height: 100vh;
   --final-width: min(100vw, calc(100vh * 1.7777778));
   --final-height: calc(var(--final-width) / 1.7777778);
   --intro-scale: 0.56;
@@ -84,22 +85,37 @@ body.is-mobile-portrait {
   --threshold-docked-title-max-width: calc(100vw - 32px);
 }
 
+body.is-mobile-portrait .page,
+body.is-tablet .page,
+body.is-mobile-portrait .night-world,
+body.is-tablet .night-world,
+body.is-mobile-portrait .hero,
+body.is-tablet .hero {
+  min-height: var(--app-height);
+}
+
 * {
   box-sizing: border-box;
 }
 
-html,
-body {
+html {
+  height: 100%;
   margin: 0;
-  min-height: 100%;
   background: #090d16;
 }
 
 body {
+  height: 100%;
+  min-height: 100%;
+  margin: 0;
   overflow: hidden;
+  background: #090d16;
   font-family: "Noto Sans", sans-serif;
   color: var(--text);
-  perspective: 1600px;
+  /* Note: perspective intentionally NOT set here.
+     On Safari, perspective on body makes it the containing block for all position:fixed
+     descendants, collapsing their clientHeight to ~0. It is set on .screen-script-layer
+     instead, which is the actual parent of the glyphs that use translate3d. */
 }
 
 button {
@@ -204,6 +220,7 @@ button {
   overflow: hidden;
   pointer-events: none;
   transition: opacity 1200ms ease;
+  perspective: 1600px; /* moved from body to avoid Safari fixed-position containing block bug */
 }
 
 .screen-script-layer__surface,
@@ -1271,9 +1288,11 @@ body.is-tablet .scroll-prompt__wheel {
 .intro-scroll-journey {
   display: none;
   position: fixed;
-  inset: 0;
-  height: 100vh;
-  height: 100dvh;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  width: 100%;
   z-index: 15;
   overflow-y: auto;
   overflow-x: hidden;
@@ -1282,7 +1301,9 @@ body.is-tablet .scroll-prompt__wheel {
   -ms-overflow-style: none;
   overscroll-behavior: contain;
   touch-action: pan-y;
-  -webkit-overflow-scrolling: touch;
+  scroll-behavior: auto;
+  /* -webkit-overflow-scrolling: touch removed — deprecated in Safari 13+ and
+     causes compositing layer conflicts on macOS Safari 15+ */
 }
 
 .intro-scroll-journey::-webkit-scrollbar {
@@ -1301,15 +1322,18 @@ body.is-tablet .scroll-prompt__wheel {
 .scroll-journey {
   display: none;
   position: fixed;
-  inset: 0;
-  height: 100vh;
-  height: 100dvh;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  width: 100%;
   z-index: 14;
   overflow-y: scroll;
   overflow-x: hidden;
   overscroll-behavior: contain;
   touch-action: pan-y;
-  -webkit-overflow-scrolling: touch;
+  scroll-behavior: auto;
+  /* -webkit-overflow-scrolling: touch removed — deprecated in Safari 13+ */
 }
 
 .scroll-journey.is-active {
@@ -1317,12 +1341,28 @@ body.is-tablet .scroll-prompt__wheel {
 }
 
 .scroll-stage {
+  position: -webkit-sticky;
   position: sticky;
   top: 0;
   width: 100%;
   height: 100vh;
   z-index: 1;
   pointer-events: none;
+}
+
+body.is-mobile-portrait .intro-scroll-journey,
+body.is-tablet .intro-scroll-journey,
+body.is-mobile-portrait .scroll-journey,
+body.is-tablet .scroll-journey,
+body.is-mobile-portrait .scroll-stage,
+body.is-tablet .scroll-stage {
+  bottom: auto;
+  height: var(--app-height);
+}
+
+body.is-mobile-portrait .scene-canvas,
+body.is-tablet .scene-canvas {
+  height: var(--app-height);
 }
 
 .scroll-scene {
@@ -1404,12 +1444,18 @@ body.is-tablet .scroll-prompt__wheel {
 }
 
 .contact-sanctum__sticky {
+  position: -webkit-sticky;
   position: sticky;
   top: 0;
   min-height: 100vh;
   display: grid;
   place-items: center;
   padding: 6.25rem 1.5rem 3rem;
+}
+
+body.is-mobile-portrait .contact-sanctum__sticky,
+body.is-tablet .contact-sanctum__sticky {
+  min-height: var(--app-height);
 }
 
 .contact-sanctum__glyphs {
@@ -3121,13 +3167,16 @@ body.is-mobile-portrait .enter-silent-button {
 }
 
 body.is-mobile-portrait .world-overlay {
-  padding: 24px;
+  padding:
+    max(24px, calc(env(safe-area-inset-top) + 16px))
+    24px
+    max(24px, calc(env(safe-area-inset-bottom) + 16px));
   align-items: center;
 }
 
 body.is-mobile-portrait .world-overlay__content {
   width: min(100%, calc(100vw - 48px));
-  max-height: calc(100svh - 48px);
+  max-height: calc(var(--app-height) - max(48px, calc(env(safe-area-inset-top) + env(safe-area-inset-bottom) + 32px)));
   padding: 1.65rem 1rem 1.1rem;
   border-radius: 22px;
   overflow-y: auto;
@@ -3193,13 +3242,16 @@ body.is-mobile-portrait .world-overlay__card-desc {
 }
 
 body.is-tablet .world-overlay {
-  padding: 28px;
+  padding:
+    max(28px, calc(env(safe-area-inset-top) + 20px))
+    28px
+    max(28px, calc(env(safe-area-inset-bottom) + 20px));
   align-items: center;
 }
 
 body.is-tablet .world-overlay__content {
   width: min(92vw, 900px);
-  max-height: calc(100svh - 56px);
+  max-height: calc(var(--app-height) - max(56px, calc(env(safe-area-inset-top) + env(safe-area-inset-bottom) + 40px)));
   padding: 2rem 1.75rem 1.6rem;
   overflow-y: auto;
 }
@@ -3228,12 +3280,15 @@ body.is-tablet .world-overlay__circle {
 @media (min-width: 761px) and (max-width: 1024px) {
   .world-overlay {
     align-items: center !important;
-    padding: 28px !important;
+    padding:
+      max(28px, calc(env(safe-area-inset-top) + 20px))
+      28px
+      max(28px, calc(env(safe-area-inset-bottom) + 20px)) !important;
   }
 
   .world-overlay__content {
     width: min(92vw, 900px) !important;
-    max-height: calc(100svh - 56px) !important;
+    max-height: calc(var(--app-height) - max(56px, calc(env(safe-area-inset-top) + env(safe-area-inset-bottom) + 40px))) !important;
     padding: 2rem 1.75rem 1.6rem !important;
     overflow-y: auto !important;
   }
@@ -3407,8 +3462,8 @@ body.is-mobile-portrait .journey-chrome__corner--bottom-right {
 
 body.is-mobile-portrait .journey-chrome__menu-toggle {
   position: absolute;
-  top: 28px;
-  right: 24px;
+  top: max(28px, calc(env(safe-area-inset-top) + 16px));
+  right: max(24px, calc(env(safe-area-inset-right) + 24px));
   z-index: 24;
   width: 56px;
   height: 56px;
@@ -3464,7 +3519,11 @@ body.is-mobile-portrait .journey-mobile-menu {
   z-index: 23;
   display: grid;
   grid-template-rows: 1fr auto;
-  padding: 9rem 24px 2.4rem;
+  padding:
+    max(9rem, calc(env(safe-area-inset-top) + 7rem))
+    max(24px, calc(env(safe-area-inset-right) + 24px))
+    max(2.4rem, calc(env(safe-area-inset-bottom) + 2.4rem))
+    max(24px, calc(env(safe-area-inset-left) + 24px));
   background: #050912;
   opacity: 0;
   visibility: hidden;
@@ -3710,7 +3769,11 @@ body.is-tablet .journey-mobile-menu {
   z-index: 23;
   display: grid;
   grid-template-rows: 1fr auto;
-  padding: 9rem 28px 2.8rem;
+  padding:
+    max(9rem, calc(env(safe-area-inset-top) + 7rem))
+    max(28px, calc(env(safe-area-inset-right) + 28px))
+    max(2.8rem, calc(env(safe-area-inset-bottom) + 2.8rem))
+    max(28px, calc(env(safe-area-inset-left) + 28px));
   background: #050912;
   opacity: 0;
   visibility: hidden;

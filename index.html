@@ -14,7 +14,20 @@
       href="https://fonts.googleapis.com/css2?family=EB+Garamond:wght@400;400i&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="./styles.css?v=safari-full-rebuild-1" />
+    <script>
+      (function () {
+        var ua = window.navigator.userAgent || "";
+        var isSafari = /Safari/i.test(ua) && !/Chrome|Chromium|CriOS|FxiOS|Edg/i.test(ua);
+        var platform = window.navigator.platform || (window.navigator.userAgentData && window.navigator.userAgentData.platform) || "";
+        window.__USE_MAC_SAFARI_BUNDLE__ = Boolean(
+          isSafari && (/Mac/i.test(platform) || (typeof window.safari !== "undefined" && !/Mobile/i.test(ua)))
+        );
+        var href = window.__USE_MAC_SAFARI_BUNDLE__
+          ? "./safari-styles.css?v=safari-full-rebuild-4"
+          : "./styles.css?v=frame-cdn-config-pass-debug-5";
+        document.write('<link rel="stylesheet" href="' + href + '" />');
+      })();
+    </script>
   </head>
   <body>
     <svg class="filters" aria-hidden="true">
@@ -489,6 +502,13 @@
     <script>
       window.FRAME_BASE_URL = "https://pub-d1b8bbbf456c4ac98ffb9a8f9bf649b2.r2.dev/";
     </script>
-    <script src="./script.js?v=safari-full-rebuild-4"></script>
+    <script>
+      (function () {
+        var src = window.__USE_MAC_SAFARI_BUNDLE__
+          ? "./safari-script.js?v=safari-full-rebuild-4"
+          : "./script.js?v=frame-cdn-config-pass-debug-5";
+        document.write('<script src="' + src + '"><\/script>');
+      })();
+    </script>
   </body>
 </html>

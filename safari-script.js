@@ -1,4 +1,8 @@
 const brahmiDigits = ["𑁦", "𑁧", "𑁨", "𑁩", "𑁪", "𑁫", "𑁬", "𑁭", "𑁮", "𑁯"];
+if ("scrollRestoration" in history) {
+  history.scrollRestoration = "manual";
+}
+
 const brahmiGlyphs = [
   "𑀅",
   "𑀆",
@@ -101,12 +105,27 @@ const soundWavePaths = Array.from(document.querySelectorAll(".sound-wave__motion
 const sceneFrameStreams = [];
 const FRAME_BASE_URL = typeof window.FRAME_BASE_URL === "string" ? window.FRAME_BASE_URL.trim() : "";
 const DEBUG_SCROLL_DIAGNOSTICS = new URLSearchParams(window.location.search).has("debugScroll");
+const DEBUG_SAFARI_DIAGNOSTICS = new URLSearchParams(window.location.search).has("debugSafari");
 const DEBUG_SCROLL_HOLDS = DEBUG_SCROLL_DIAGNOSTICS;
 const DEBUG_INTRO_SCROLL = DEBUG_SCROLL_DIAGNOSTICS;
 let scrollDebugOverlay = null;
+let safariDebugOverlay = null;
 let lastScrollDebugUpdate = -Infinity;
 let lastScrollDebugHold = "none";
 let lastIntroDebugLog = 0;
+let lastSafariWheelBridge = "none";
+let lastSafariReadiness = "none";
+let touchScrollHoldDepth = 0;
+
+function pushTouchScrollHold() {
+  let released = false;
+  touchScrollHoldDepth += 1;
+  return () => {
+    if (released) return;
+    released = true;
+    touchScrollHoldDepth = Math.max(0, touchScrollHoldDepth - 1);
+  };
+}
 
 function debugScrollHold(source, event) {
   if (!DEBUG_SCROLL_HOLDS) return;
@@ -177,6 +196,68 @@ if (DEBUG_SCROLL_DIAGNOSTICS) {
       scrollTop: scrollJourney?.scrollTop || 0,
     });
   });
+}
+
+function getElementScrollState(el) {
+  if (!el) return "missing";
+  const style = window.getComputedStyle(el);
+  return [
+    `class=${el.className || "none"}`,
+    `display=${style.display}`,
+    `overflowY=${style.overflowY}`,
+    `scroll=${Math.round(el.scrollTop)}/${Math.round(el.scrollHeight - el.clientHeight)}`,
+    `client=${Math.round(el.clientWidth)}x${Math.round(el.clientHeight)}`,
+  ].join(" ");
+}
+
+function updateSafariDebugOverlay() {
+  if (!DEBUG_SAFARI_DIAGNOSTICS) return;
+  if (!safariDebugOverlay) {
+    safariDebugOverlay = document.createElement("div");
+    safariDebugOverlay.style.cssText = [
+      "position:fixed",
+      "left:12px",
+      "top:12px",
+      "z-index:2147483647",
+      "max-width:min(560px, calc(100vw - 24px))",
+      "padding:10px 12px",
+      "background:rgba(3, 8, 14, 0.88)",
+      "color:#dff4ff",
+      "font:11px/1.45 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace",
+      "border:1px solid rgba(176, 225, 255, 0.35)",
+      "border-radius:6px",
+      "pointer-events:none",
+      "white-space:pre-wrap",
+    ].join(";");
+    document.body.appendChild(safariDebugOverlay);
+  }
+  const bodyH = Math.round(document.body.clientHeight);
+  const bodyW = Math.round(document.body.clientWidth);
+  const introSH = introScrollJourney ? Math.round(introScrollJourney.scrollHeight) : "?";
+  const introCH = introScrollJourney ? Math.round(introScrollJourney.clientHeight) : "?";
+  const journeySH = scrollJourney ? Math.round(scrollJourney.scrollHeight) : "?";
+  const journeyCH = scrollJourney ? Math.round(scrollJourney.clientHeight) : "?";
+  const proxyActive = macSafariScrollProxy ? "yes" : "no";
+  safariDebugOverlay.textContent = [
+    `ua safari: ${isMacSafari() ? "yes" : "no"} mode: ${viewportMode}`,
+    `body: ${bodyW}x${bodyH} overflow: ${window.getComputedStyle(document.body).overflow}`,
+    `holdDepth: ${touchScrollHoldDepth}`,
+    `introActive: ${introScrollActive ? "yes" : "no"} transitioning: ${introScrollTransitioning ? "yes" : "no"}`,
+    `intro: scroll=${Math.round(introScrollJourney?.scrollTop || 0)} sh=${introSH} ch=${introCH} max=${introSH - introCH}`,
+    `intro-el: ${getElementScrollState(introScrollJourney)}`,
+    `journey: scroll=${Math.round(scrollJourney?.scrollTop || 0)} sh=${journeySH} ch=${journeyCH}`,
+    `journey-el: ${getElementScrollState(scrollJourney)}`,
+    `proxy: ${proxyActive} winY=${Math.round(window.scrollY || 0)}`,
+    `worldOverlay: ${document.getElementById("worldOverlay")?.className || "missing"}`,
+    `lastWheel: ${lastSafariWheelBridge}`,
+    `readiness: ${lastSafariReadiness}`,
+    `lastHold: ${lastScrollDebugHold}`,
+  ].join("\n");
+}
+
+if (DEBUG_SAFARI_DIAGNOSTICS) {
+  window.setInterval(updateSafariDebugOverlay, 180);
+  window.requestAnimationFrame(updateSafariDebugOverlay);
 }
 
 function normalizeFrameBaseUrl(url) {
@@ -755,6 +836,8 @@ let journeyFrameCallback = null;
 let mistFrameCallback = null;
 let caseStudyOverlayUnloadTimer = 0;
 let aboutOverlayVisible = false;
+let pendingCaseStudyReadiness = null;
+let releaseCaseStudyReadinessTouchHold = null;
 let journeyChromeVisible = false;
 let journeyMenuOpen = false;
 let introScrollActive = false;
@@ -768,6 +851,15 @@ let introStream = null;
 let introScrollUnlockAt = 0;
 let introScrollSafetyWaitUntil = 0;
 let introFramesReadyBeforeSequence = false;
+
+function clearCaseStudyReadinessHold() {
+  if (releaseCaseStudyReadinessTouchHold) {
+    releaseCaseStudyReadinessTouchHold();
+    releaseCaseStudyReadinessTouchHold = null;
+  }
+}
+let openingPreloadS2Stream = null;
+let openingPreloadS3Stream = null;
 let contactPreloadS15Stream = null;
 let contactPreloadS16Stream = null;
 let viewportMode = "desktop";
@@ -821,6 +913,14 @@ function getViewportMode() {
   return "desktop";
 }
 
+function isMacSafari() {
+  const ua = window.navigator.userAgent || "";
+  const isSafari = /Safari/i.test(ua) && !/Chrome|Chromium|CriOS|FxiOS|Edg/i.test(ua);
+  if (!isSafari) return false;
+  const platform = window.navigator.platform || window.navigator.userAgentData?.platform || "";
+  return /Mac/i.test(platform) || (typeof window.safari !== "undefined" && !/Mobile/i.test(ua));
+}
+
 function applyViewportMode(mode = getViewportMode()) {
   viewportMode = mode;
   document.body.classList.toggle("is-mobile-portrait", mode === "mobile");
@@ -835,6 +935,149 @@ function applyViewportMode(mode = getViewportMode()) {
   }
   queueMotionFrameRedraw();
 }
+
+function getAppViewportHeight() {
+  if (isMotionViewport() && window.visualViewport?.height) {
+    return Math.round(window.visualViewport.height);
+  }
+  return window.innerHeight;
+}
+
+function getWheelDeltaY(event) {
+  if (Number.isFinite(event.deltaY) && event.deltaY !== 0) return event.deltaY;
+  if (Number.isFinite(event.wheelDeltaY) && event.wheelDeltaY !== 0) return -event.wheelDeltaY;
+  if (Number.isFinite(event.wheelDelta) && event.wheelDelta !== 0) return -event.wheelDelta;
+  if (Number.isFinite(event.detail) && event.detail !== 0) return event.detail * 16;
+  return 0;
+}
+
+function bridgeWheelToScroller(scroller, event) {
+  if (!scroller || !isMacSafari()) return false;
+  if (event.__macSafariWheelBridged) return false;
+  const deltaY = getWheelDeltaY(event);
+  if (!deltaY) {
+    lastSafariWheelBridge = `zero delta type=${event?.type || "unknown"}`;
+    return false;
+  }
+  const maxScrollTop = Math.max(0, scroller.scrollHeight - scroller.clientHeight);
+  if (maxScrollTop <= 0) {
+    lastSafariWheelBridge = `blocked max=0 target=${event?.target?.id || event?.target?.className || event?.target?.tagName || "unknown"}`;
+    return false;
+  }
+  const nextScrollTop = Math.max(0, Math.min(maxScrollTop, scroller.scrollTop + deltaY));
+  if (nextScrollTop === scroller.scrollTop) {
+    lastSafariWheelBridge = `edge ${event?.type || "wheel"} delta=${Math.round(deltaY)} scroll=${Math.round(scroller.scrollTop)}/${Math.round(maxScrollTop)}`;
+    return false;
+  }
+  scroller.scrollTop = nextScrollTop;
+  event.__macSafariWheelBridged = true;
+  lastSafariWheelBridge = `bridged ${event?.type || "wheel"} delta=${Math.round(deltaY)} scroll=${Math.round(nextScrollTop)}/${Math.round(maxScrollTop)}`;
+  return true;
+}
+
+function shouldBypassMacSafariWheelBridge(target) {
+  return Boolean(target?.closest?.(
+    "a, button, input, textarea, select, [role='button'], .journey-mobile-menu, .project-popover, .case-study-overlay, .about-overlay"
+  ));
+}
+
+function getMacSafariWheelBridgeScroller() {
+  if (!isMacSafari() || touchScrollHoldDepth > 0) return null;
+  if (
+    introScrollActive &&
+    introScrollJourney &&
+    introScrollJourney.classList.contains("is-active") &&
+    !introScrollTransitioning
+  ) {
+    return introScrollJourney;
+  }
+  if (scrollJourney?.classList.contains("is-active")) {
+    return scrollJourney;
+  }
+  return null;
+}
+
+function handleMacSafariWindowWheel(event) {
+  if (event.__macSafariWheelBridged) return;
+  if (shouldBypassMacSafariWheelBridge(event.target)) {
+    lastSafariWheelBridge = `bypassed target=${event?.target?.id || event?.target?.className || event?.target?.tagName || "unknown"}`;
+    return;
+  }
+  const scroller = getMacSafariWheelBridgeScroller();
+  if (!scroller) {
+    lastSafariWheelBridge = `no scroller hold=${touchScrollHoldDepth} intro=${introScrollActive ? "yes" : "no"} journey=${scrollJourney?.classList.contains("is-active") ? "yes" : "no"}`;
+    return;
+  }
+  const bridged = bridgeWheelToScroller(scroller, event);
+  if (!bridged) return;
+  if (scroller === introScrollJourney) {
+    handleIntroScrollInput();
+  }
+  event.preventDefault();
+}
+
+function registerMacSafariWheelBridge() {
+  const listenerOptions = { capture: true, passive: false };
+  [window, document, document.documentElement, document.body].filter(Boolean).forEach((target) => {
+    target.addEventListener("wheel", handleMacSafariWindowWheel, listenerOptions);
+    target.addEventListener("mousewheel", handleMacSafariWindowWheel, listenerOptions);
+  });
+}
+
+/* ── Safari scroll proxy (fallback for touch and any wheel-bridge gaps) ─── */
+let macSafariScrollProxy = null;
+
+function syncMacSafariProxyHeight() {
+  if (!macSafariScrollProxy?.scroller) return;
+  const scroller = macSafariScrollProxy.scroller;
+  const maxScrollTop = Math.max(0, scroller.scrollHeight - scroller.clientHeight);
+  document.documentElement.style.overflowY = "auto";
+  document.body.style.overflowY = "auto";
+  document.body.style.height = `${window.innerHeight + maxScrollTop}px`;
+  document.body.style.minHeight = `${window.innerHeight + maxScrollTop}px`;
+}
+
+function enableMacSafariScrollProxy(scroller, onScroll) {
+  if (!isMacSafari() || !scroller) return;
+  disableMacSafariScrollProxy(false);
+  const handleScroll = () => {
+    if (!macSafariScrollProxy?.scroller) return;
+    const maxScrollTop = Math.max(
+      0,
+      macSafariScrollProxy.scroller.scrollHeight - macSafariScrollProxy.scroller.clientHeight
+    );
+    const targetScrollTop = Math.max(0, Math.min(maxScrollTop, window.scrollY || window.pageYOffset || 0));
+    macSafariScrollProxy.scroller.scrollTop = targetScrollTop;
+    lastSafariWheelBridge = `proxy scroll=${Math.round(targetScrollTop)}`;
+    if (typeof macSafariScrollProxy.onScroll === "function") {
+      macSafariScrollProxy.onScroll();
+    }
+    if (macSafariScrollProxy.scroller === scrollJourney && typeof journeyFrameCallback === "function") {
+      journeyFrameCallback(performance.now());
+    }
+  };
+  macSafariScrollProxy = { scroller, onScroll, handleScroll };
+  syncMacSafariProxyHeight();
+  window.scrollTo(0, scroller.scrollTop || 0);
+  window.addEventListener("scroll", handleScroll, { passive: true });
+}
+
+function disableMacSafariScrollProxy(resetScroll = true) {
+  if (!macSafariScrollProxy) return;
+  window.removeEventListener("scroll", macSafariScrollProxy.handleScroll);
+  macSafariScrollProxy = null;
+  document.body.style.height = "";
+  document.body.style.minHeight = "";
+  document.body.style.overflowY = "";
+  document.documentElement.style.overflowY = "";
+  if (resetScroll) {
+    window.scrollTo(0, 0);
+  }
+}
+
+window.addEventListener("resize", () => {
+  if (isMacSafari()) syncMacSafariProxyHeight();
+});
 
 function updateResponsiveCopy() {
   const useTouchCopy = viewportMode !== "desktop";
@@ -871,7 +1114,7 @@ function clampIntroProgress(value) {
 }
 
 function progressFromWheelDelta(currentProgress, deltaY) {
-  const safeViewportHeight = Math.max(1, window.innerHeight);
+  const safeViewportHeight = Math.max(1, getAppViewportHeight());
   const progressStep = deltaY / (safeViewportHeight * introTravelScreens);
   return clampIntroProgress(currentProgress + progressStep);
 }
@@ -911,7 +1154,7 @@ function bindTouchScroller(scroller, onManualScroll) {
   let startY = 0;
   let startScrollTop = 0;
 
-  const canDrag = () => scroller.classList.contains("is-active") && isMotionViewport();
+  const canDrag = () => touchScrollHoldDepth <= 0 && scroller.classList.contains("is-active") && isMotionViewport();
 
   scroller.addEventListener("touchstart", (event) => {
     if (!canDrag() || event.touches.length !== 1 || shouldBypassTouchScroller(event.target)) {
@@ -925,9 +1168,15 @@ function bindTouchScroller(scroller, onManualScroll) {
 
   scroller.addEventListener("touchmove", (event) => {
     if (!isDragging || event.touches.length !== 1) return;
+    if (touchScrollHoldDepth > 0) {
+      debugScrollHold("touchScroller:held", event);
+      event.preventDefault();
+      return;
+    }
     const deltaY = startY - event.touches[0].clientY;
     if (Math.abs(deltaY) < 2) return;
-    scroller.scrollTop = startScrollTop + deltaY;
+    const travelMultiplier = viewportMode === "mobile" ? 1.2 : viewportMode === "tablet" ? 1.1 : 1;
+    scroller.scrollTop = startScrollTop + deltaY * travelMultiplier;
     if (typeof onManualScroll === "function") {
       onManualScroll();
     }
@@ -1063,10 +1312,11 @@ function buildCaseStudyOverlaySrc(src) {
   return url.toString();
 }
 
-function openCaseStudyOverlay(sceneKey) {
+function openCaseStudyOverlay(sceneKey, holdUntilReady = null) {
   const src = caseStudySrcByScene[sceneKey];
   if (!src || !caseStudyOverlay || !caseStudyOverlayFrame) return false;
   const journey = document.getElementById("scrollJourney");
+  pendingCaseStudyReadiness = typeof holdUntilReady === "function" ? holdUntilReady : null;
 
   if (caseStudyOverlayUnloadTimer) {
     window.clearTimeout(caseStudyOverlayUnloadTimer);
@@ -1090,6 +1340,8 @@ function closeCaseStudyOverlay() {
   caseStudyOverlay.classList.remove("is-visible");
   caseStudyOverlay.setAttribute("aria-hidden", "true");
 
+  pendingCaseStudyReadiness = null;
+  clearCaseStudyReadinessHold();
   if (journey) {
     journey.style.overflowY = "scroll";
   }
@@ -1221,7 +1473,7 @@ function buildGlyphField() {
   const padding = isMobile ? 24 : 34;
   const targetCell = isMobile ? 38 : 42;
   const usableWidth = Math.max(window.innerWidth - padding * 2, 320);
-  const usableHeight = Math.max(window.innerHeight - padding * 2, 320);
+  const usableHeight = Math.max(getAppViewportHeight() - padding * 2, 320);
   const columns = Math.max(10, Math.floor(usableWidth / (targetCell + gap)));
   const rows = Math.max(10, Math.floor(usableHeight / (targetCell + gap)));
   const total = columns * rows;
@@ -1349,11 +1601,13 @@ function startAutoFlash() {
 
 function updateViewportVars() {
   applyViewportMode();
-  const maxWidth = Math.min(window.innerWidth, window.innerHeight * (16 / 9));
+  const appHeight = getAppViewportHeight();
+  const maxWidth = Math.min(window.innerWidth, appHeight * (16 / 9));
   const maxHeight = maxWidth / (16 / 9);
   const marginX = window.innerWidth > 900 ? window.innerWidth * 0.56 : window.innerWidth * 0.78;
-  const marginY = (window.innerHeight - (window.innerWidth > 900 ? 160 : 224)) * (16 / 9);
+  const marginY = (appHeight - (window.innerWidth > 900 ? 160 : 224)) * (16 / 9);
   const introWidth = Math.min(marginX, marginY, maxWidth);
+  document.documentElement.style.setProperty("--app-height", `${appHeight}px`);
   document.documentElement.style.setProperty("--final-width", `${maxWidth}px`);
   document.documentElement.style.setProperty("--final-height", `${maxHeight}px`);
 }
@@ -1403,7 +1657,6 @@ function startLoadingAnimation() {
   const stream = ensureIntroStream();
   const contactStreams = ensureContactPreloadStreams();
   const minVisibleUntil = performance.now() + 1300;
-  const maxWaitUntil = performance.now() + 18000;
   let displayedProgress = 0;
 
   const setProgress = (value) => {
@@ -1434,14 +1687,18 @@ function startLoadingAnimation() {
     contactStreams.forEach(({ stream: contactStream }) => {
       contactStream.processQueue(now, true);
     });
-    const loaded = stream.countLoadedInRange(0, introTotalFrames);
-    setProgress((loaded / introTotalFrames) * 100);
+    const introLoaded = stream.countLoadedInRange(0, introTotalFrames);
+    const contactLoaded = contactStreams.reduce((sum, { stream: contactStream, totalFrames }) => {
+      return sum + contactStream.countLoadedInRange(0, totalFrames);
+    }, 0);
+    const totalFramesToLoad = introTotalFrames + contactStreams.reduce((sum, { totalFrames }) => sum + totalFrames, 0);
+    const totalLoaded = introLoaded + contactLoaded;
+    setProgress((totalLoaded / totalFramesToLoad) * 100);
 
-    const ready = loaded >= introTotalFrames;
+    const ready = totalLoaded >= totalFramesToLoad;
     const pastMinimum = performance.now() >= minVisibleUntil;
-    const timedOut = performance.now() >= maxWaitUntil;
 
-    if ((ready && pastMinimum) || timedOut) {
+    if (ready && pastMinimum) {
       introFramesReadyBeforeSequence = ready;
       setProgress(100);
       setTimeout(hideLoader, 220);
@@ -1561,22 +1818,34 @@ function startExperience() {
 }
 
 window.addEventListener("resize", updateViewportVars);
+window.visualViewport?.addEventListener("resize", updateViewportVars);
+window.visualViewport?.addEventListener("scroll", updateViewportVars);
 window.addEventListener("resize", buildGlyphField);
 window.addEventListener("resize", resizeIntroCanvas);
 window.addEventListener("mousemove", setMouseMotion);
 window.addEventListener("mouseleave", resetMouseMotion);
+registerMacSafariWheelBridge();
 if (introScrollJourney) {
   introScrollJourney.addEventListener("scroll", handleIntroScrollInput, { passive: true });
   introScrollJourney.addEventListener("wheel", (event) => {
     if (!introScrollActive || introScrollTransitioning) return;
+    const bridged = bridgeWheelToScroller(introScrollJourney, event);
+    if (bridged) {
+      handleIntroScrollInput();
+    }
     debugIntroScroll("wheel", {
       deltaY: Math.round(event.deltaY),
       scrollTop: Math.round(introScrollJourney.scrollTop),
+      bridged,
     }, 120);
   }, { passive: true });
   bindTouchScroller(introScrollJourney, handleIntroScrollInput);
 }
 if (scrollJourney) {
+  scrollJourney.addEventListener("wheel", (event) => {
+    if (!scrollJourney.classList.contains("is-active") || touchScrollHoldDepth > 0) return;
+    bridgeWheelToScroller(scrollJourney, event);
+  }, { passive: true });
   bindTouchScroller(scrollJourney);
 }
 walkButton.addEventListener("click", () => {
@@ -1787,7 +2056,7 @@ function createSceneFrameStream({ basePath, totalFrames, canvas, sceneKey = "" }
 
   function resizeToViewport() {
     activeCanvas.width = window.innerWidth;
-    activeCanvas.height = window.innerHeight;
+    activeCanvas.height = getAppViewportHeight();
     lastPaintedIndex = null;
     lastRequestedIndex = null;
     draw(lastDrawnIndex);
@@ -1892,7 +2161,7 @@ function createSceneFrameStream({ basePath, totalFrames, canvas, sceneKey = "" }
 function resizeIntroCanvas() {
   if (!introSceneCanvas) return;
   introSceneCanvas.width = window.innerWidth;
-  introSceneCanvas.height = window.innerHeight;
+  introSceneCanvas.height = getAppViewportHeight();
 }
 
 function ensureIntroStream() {
@@ -1948,6 +2217,56 @@ function ensureContactPreloadStreams() {
   ];
 }
 
+function ensureOpeningWorldPreloadStreams() {
+  if (!openingPreloadS2Stream) {
+    openingPreloadS2Stream = createSceneFrameStream({
+      basePath: "./assets/scene2-frames-1600",
+      totalFrames: 121,
+      canvas: createPreloadCanvas(),
+      sceneKey: "s2",
+    });
+  }
+  if (!openingPreloadS3Stream) {
+    openingPreloadS3Stream = createSceneFrameStream({
+      basePath: "./assets/scene3-frames-1600",
+      totalFrames: 289,
+      canvas: createPreloadCanvas(),
+      sceneKey: "s3",
+    });
+  }
+  return [
+    { stream: openingPreloadS2Stream, totalFrames: 121, preloadFrames: 121, readyFrames: 121 },
+    { stream: openingPreloadS3Stream, totalFrames: 289, preloadFrames: 160, readyFrames: 160 },
+  ];
+}
+
+function createWayfinderHoldReadiness() {
+  const preloadStreams = ensureOpeningWorldPreloadStreams();
+  preloadStreams.forEach(({ stream }) => {
+    if (typeof stream.retainLoadedFrames === "function") {
+      stream.retainLoadedFrames();
+    }
+  });
+
+  return () => {
+    const now = performance.now();
+    let ready = true;
+    const readinessParts = [];
+    preloadStreams.forEach(({ stream, preloadFrames, readyFrames }) => {
+      stream.preloadRange(0, preloadFrames);
+      stream.setTarget(0, now);
+      stream.processQueue(now, true);
+      const loaded = stream.countLoadedInRange(0, preloadFrames);
+      readinessParts.push(`${loaded}/${readyFrames}`);
+      if (loaded < readyFrames) {
+        ready = false;
+      }
+    });
+    lastSafariReadiness = `wayfinder ${readinessParts.join(" + ")} ready=${ready ? "yes" : "no"}`;
+    return ready;
+  };
+}
+
 function prepareIntroScrollMode() {
   const now = performance.now();
   introScrollUnlockAt = now;
@@ -1998,6 +2317,8 @@ function activateIntroScrollMode() {
       clientHeight: Math.round(introScrollJourney.clientHeight),
       maxScrollTop: Math.round(introScrollJourney.scrollHeight - introScrollJourney.clientHeight),
     });
+    enableMacSafariScrollProxy(introScrollJourney, handleIntroScrollInput);
+    window.setTimeout(syncMacSafariProxyHeight, 120);
   }
 
   if (stream) {
@@ -2043,6 +2364,10 @@ function handoffFromIntroScroll() {
   document.body.classList.remove("is-intro-frame-ready");
   document.body.classList.add("is-intro-handoff-active");
   setIntroScrollPromptVisible(false);
+  // Don't disable the proxy yet — keep body height inflated so Safari wheel events
+  // still reach guardedDismissOnScroll during the wayfinder transition.
+  // The journey's enableMacSafariScrollProxy call in beginScrollJourney will
+  // replace it via disableMacSafariScrollProxy(false) inside enableMacSafariScrollProxy.
   if (introScrollJourney) {
     introScrollJourney.classList.remove("is-active");
     introScrollJourney.setAttribute("aria-hidden", "true");
@@ -2065,7 +2390,9 @@ function handoffFromIntroScroll() {
       }
       activateJourney();
     }, {
-      scroller: introScrollJourney
+      scroller: introScrollJourney,
+      holdUntilReady: createWayfinderHoldReadiness(),
+      maxHoldDuration: 12000,
     });
   } else {
     activateJourney();
@@ -2134,21 +2461,22 @@ function beginScrollJourney() {
   const scene14 = document.getElementById("scene14");
   const scene15 = document.getElementById("scene15");
   const scene16 = document.getElementById("scene16");
-  const s2Height = window.innerHeight * 4;
-  const s3Height = window.innerHeight * 7;
-  const s4Height = window.innerHeight * 6;
+  const journeyViewportHeight = getAppViewportHeight();
+  const s2Height = journeyViewportHeight * 4;
+  const s3Height = journeyViewportHeight * 7;
+  const s4Height = journeyViewportHeight * 6;
   const s5Height = 0;
-  const s6Height = window.innerHeight * 6;
-  const s7Height = window.innerHeight * 4;
-  const s8Height = window.innerHeight * 6;
-  const s9Height = window.innerHeight * 6;
-  const s10Height = window.innerHeight * 6;
-  const s11Height = window.innerHeight * 6;
+  const s6Height = journeyViewportHeight * 6;
+  const s7Height = journeyViewportHeight * 4;
+  const s8Height = journeyViewportHeight * 6;
+  const s9Height = journeyViewportHeight * 6;
+  const s10Height = journeyViewportHeight * 6;
+  const s11Height = journeyViewportHeight * 6;
   const s12Height = 0;
-  const s13Height = window.innerHeight * 6;
-  const s14Height = window.innerHeight * 5;
-  const s15Height = window.innerHeight * 7;
-  const s16Height = window.innerHeight * 4;
+  const s13Height = journeyViewportHeight * 6;
+  const s14Height = journeyViewportHeight * 5;
+  const s15Height = journeyViewportHeight * 7;
+  const s16Height = journeyViewportHeight * 4;
   scene2.style.height = s2Height + "px";
   scene3.style.height = s3Height + "px";
   scene4.style.height = s4Height + "px";
@@ -2166,21 +2494,21 @@ function beginScrollJourney() {
   scene16.style.height = s16Height + "px";
   void journey.offsetHeight;
 
-  const s2MaxScroll = s2Height - window.innerHeight;
+  const s2MaxScroll = s2Height - journeyViewportHeight;
   const s3Start = s2MaxScroll;
-  const s4Start = s2Height + s3Height - window.innerHeight;
-  const s5Start = s2Height + s3Height + s4Height - window.innerHeight;
-  const s6Start = s2Height + s3Height + s4Height + s5Height - window.innerHeight;
-  const s7Start = s2Height + s3Height + s4Height + s5Height + s6Height - window.innerHeight;
-  const s8Start = s2Height + s3Height + s4Height + s5Height + s6Height + s7Height - window.innerHeight;
-  const s9Start = s2Height + s3Height + s4Height + s5Height + s6Height + s7Height + s8Height - window.innerHeight;
-  const s10Start = s2Height + s3Height + s4Height + s5Height + s6Height + s7Height + s8Height + s9Height - window.innerHeight;
-  const s11Start = s2Height + s3Height + s4Height + s5Height + s6Height + s7Height + s8Height + s9Height + s10Height - window.innerHeight;
-  const s12Start = s2Height + s3Height + s4Height + s5Height + s6Height + s7Height + s8Height + s9Height + s10Height + s11Height - window.innerHeight;
-  const s13Start = s2Height + s3Height + s4Height + s5Height + s6Height + s7Height + s8Height + s9Height + s10Height + s11Height + s12Height - window.innerHeight;
-  const s14Start = s2Height + s3Height + s4Height + s5Height + s6Height + s7Height + s8Height + s9Height + s10Height + s11Height + s12Height + s13Height - window.innerHeight;
-  const s15Start = s2Height + s3Height + s4Height + s5Height + s6Height + s7Height + s8Height + s9Height + s10Height + s11Height + s12Height + s13Height + s14Height - window.innerHeight;
-  const s16Start = s2Height + s3Height + s4Height + s5Height + s6Height + s7Height + s8Height + s9Height + s10Height + s11Height + s12Height + s13Height + s14Height + s15Height - window.innerHeight;
+  const s4Start = s2Height + s3Height - journeyViewportHeight;
+  const s5Start = s2Height + s3Height + s4Height - journeyViewportHeight;
+  const s6Start = s2Height + s3Height + s4Height + s5Height - journeyViewportHeight;
+  const s7Start = s2Height + s3Height + s4Height + s5Height + s6Height - journeyViewportHeight;
+  const s8Start = s2Height + s3Height + s4Height + s5Height + s6Height + s7Height - journeyViewportHeight;
+  const s9Start = s2Height + s3Height + s4Height + s5Height + s6Height + s7Height + s8Height - journeyViewportHeight;
+  const s10Start = s2Height + s3Height + s4Height + s5Height + s6Height + s7Height + s8Height + s9Height - journeyViewportHeight;
+  const s11Start = s2Height + s3Height + s4Height + s5Height + s6Height + s7Height + s8Height + s9Height + s10Height - journeyViewportHeight;
+  const s12Start = s2Height + s3Height + s4Height + s5Height + s6Height + s7Height + s8Height + s9Height + s10Height + s11Height - journeyViewportHeight;
+  const s13Start = s2Height + s3Height + s4Height + s5Height + s6Height + s7Height + s8Height + s9Height + s10Height + s11Height + s12Height - journeyViewportHeight;
+  const s14Start = s2Height + s3Height + s4Height + s5Height + s6Height + s7Height + s8Height + s9Height + s10Height + s11Height + s12Height + s13Height - journeyViewportHeight;
+  const s15Start = s2Height + s3Height + s4Height + s5Height + s6Height + s7Height + s8Height + s9Height + s10Height + s11Height + s12Height + s13Height + s14Height - journeyViewportHeight;
+  const s16Start = s2Height + s3Height + s4Height + s5Height + s6Height + s7Height + s8Height + s9Height + s10Height + s11Height + s12Height + s13Height + s14Height + s15Height - journeyViewportHeight;
   const s3ScrollRange = s4Start - s3Start;
   const s4ScrollRange = s5Start - s4Start;
   const s5ScrollRange = s6Start - s5Start;
@@ -2196,93 +2524,101 @@ function beginScrollJourney() {
   const s15ScrollRange = s16Start - s15Start;
   const s16ScrollRange = s16Height;
   journey.scrollTop = 0;
+  enableMacSafariScrollProxy(journey, null);
+  window.setTimeout(syncMacSafariProxyHeight, 120);
 
   const s2Canvas = document.getElementById("scene2Canvas");
   s2Canvas.width = window.innerWidth;
-  s2Canvas.height = window.innerHeight;
+  s2Canvas.height = journeyViewportHeight;
 
   const s3Canvas = document.getElementById("scene3Canvas");
   s3Canvas.width = window.innerWidth;
-  s3Canvas.height = window.innerHeight;
+  s3Canvas.height = journeyViewportHeight;
   s3Canvas.style.opacity = "0";
 
   const s4Canvas = document.getElementById("scene4Canvas");
   s4Canvas.width = window.innerWidth;
-  s4Canvas.height = window.innerHeight;
+  s4Canvas.height = journeyViewportHeight;
   s4Canvas.style.opacity = "0";
 
   const s5Canvas = document.getElementById("scene5Canvas");
   s5Canvas.width = window.innerWidth;
-  s5Canvas.height = window.innerHeight;
+  s5Canvas.height = journeyViewportHeight;
   s5Canvas.style.opacity = "0";
 
   const s6Canvas = document.getElementById("scene6Canvas");
   s6Canvas.width = window.innerWidth;
-  s6Canvas.height = window.innerHeight;
+  s6Canvas.height = journeyViewportHeight;
   s6Canvas.style.opacity = "0";
 
   const s7Canvas = document.getElementById("scene7Canvas");
   s7Canvas.width = window.innerWidth;
-  s7Canvas.height = window.innerHeight;
+  s7Canvas.height = journeyViewportHeight;
   s7Canvas.style.opacity = "0";
 
   const s8Canvas = document.getElementById("scene8Canvas");
   s8Canvas.width = window.innerWidth;
-  s8Canvas.height = window.innerHeight;
+  s8Canvas.height = journeyViewportHeight;
   s8Canvas.style.opacity = "0";
 
   const s9Canvas = document.getElementById("scene9Canvas");
   s9Canvas.width = window.innerWidth;
-  s9Canvas.height = window.innerHeight;
+  s9Canvas.height = journeyViewportHeight;
   s9Canvas.style.opacity = "0";
 
   const s10Canvas = document.getElementById("scene10Canvas");
   s10Canvas.width = window.innerWidth;
-  s10Canvas.height = window.innerHeight;
+  s10Canvas.height = journeyViewportHeight;
   s10Canvas.style.opacity = "0";
 
   const s11Canvas = document.getElementById("scene11Canvas");
   s11Canvas.width = window.innerWidth;
-  s11Canvas.height = window.innerHeight;
+  s11Canvas.height = journeyViewportHeight;
   s11Canvas.style.opacity = "0";
 
   const s12Canvas = document.getElementById("scene12Canvas");
   s12Canvas.width = window.innerWidth;
-  s12Canvas.height = window.innerHeight;
+  s12Canvas.height = journeyViewportHeight;
   s12Canvas.style.opacity = "0";
 
   const s13Canvas = document.getElementById("scene13Canvas");
   s13Canvas.width = window.innerWidth;
-  s13Canvas.height = window.innerHeight;
+  s13Canvas.height = journeyViewportHeight;
   s13Canvas.style.opacity = "0";
 
   const s14Canvas = document.getElementById("scene14Canvas");
   s14Canvas.width = window.innerWidth;
-  s14Canvas.height = window.innerHeight;
+  s14Canvas.height = journeyViewportHeight;
   s14Canvas.style.opacity = "0";
 
   const s15Canvas = document.getElementById("scene15Canvas");
   s15Canvas.width = window.innerWidth;
-  s15Canvas.height = window.innerHeight;
+  s15Canvas.height = journeyViewportHeight;
   s15Canvas.style.opacity = "0";
 
   const s16Canvas = document.getElementById("scene16Canvas");
   s16Canvas.width = window.innerWidth;
-  s16Canvas.height = window.innerHeight;
+  s16Canvas.height = journeyViewportHeight;
   s16Canvas.style.opacity = "0";
 
-  const s2Stream = createSceneFrameStream({
+  const s2Stream = openingPreloadS2Stream || createSceneFrameStream({
     basePath: "./assets/scene2-frames-1600",
     totalFrames: 121,
     canvas: s2Canvas,
     sceneKey: "s2",
   });
-  const s3Stream = createSceneFrameStream({
+  if (s2Stream.canvas !== s2Canvas && typeof s2Stream.attachCanvas === "function") {
+    s2Stream.attachCanvas(s2Canvas);
+  }
+  const s3Stream = openingPreloadS3Stream || createSceneFrameStream({
     basePath: "./assets/scene3-frames-1600",
     totalFrames: 289,
     canvas: s3Canvas,
     sceneKey: "s3",
   });
+  if (s3Stream.canvas !== s3Canvas && typeof s3Stream.attachCanvas === "function") {
+    s3Stream.attachCanvas(s3Canvas);
+  }
   const nullStream = {
     clear() {},
     prime() {},
@@ -2357,9 +2693,10 @@ function beginScrollJourney() {
 
   function resizeJourneyCanvases() {
     applyViewportMode();
+    const nextViewportHeight = getAppViewportHeight();
     journeyCanvases.forEach((canvas) => {
       canvas.width = window.innerWidth;
-      canvas.height = window.innerHeight;
+      canvas.height = nextViewportHeight;
     });
     getJourneyStreams().forEach((stream) => stream.resizeToViewport());
   }
@@ -2375,6 +2712,7 @@ function beginScrollJourney() {
   }
 
   window.addEventListener("resize", queueJourneyResize);
+  window.visualViewport?.addEventListener("resize", queueJourneyResize);
 
   function ensureS4Stream() {
     if (!s4Initialized) {
@@ -2691,8 +3029,11 @@ function beginScrollJourney() {
   function warmFramesDuringProjectHold(sceneKey, holdDuration) {
     if (holdDuration <= 0) return;
     const warmMap = {
-      s4: { getStream: ensureS6Stream, scene: "s6", count: 120 },
-      s11: { getStream: ensureS13Stream, scene: "s13", count: 120 },
+      s4: { getStream: ensureS6Stream, scene: "s6", warmCount: 120 },
+      s7: { getStream: ensureS8Stream, scene: "s8", warmCount: 120 },
+      s9: { getStream: ensureS10Stream, scene: "s10", warmCount: 120 },
+      s11: { getStream: ensureS13Stream, scene: "s13", warmCount: 120 },
+      s14: { getStream: ensureS15Stream, scene: "s15", warmCount: 160 },
     };
     const target = warmMap[sceneKey];
     if (!target) return;
@@ -2701,7 +3042,7 @@ function beginScrollJourney() {
     const stream = target.getStream();
     const tick = () => {
       const now = performance.now();
-      stream.preloadRange(0, target.count);
+      stream.preloadRange(0, target.warmCount);
       stream.setTarget(0, now);
       stream.processQueue(now, true);
       if (now - startedAt < holdDuration) {
@@ -2710,6 +3051,38 @@ function beginScrollJourney() {
     };
 
     window.setTimeout(tick, 90);
+  }
+
+  function createProjectHoldReadiness(sceneKey) {
+    const useTouchReadiness = viewportMode === "mobile" || viewportMode === "tablet";
+    const readinessMap = {
+      s4: { getStream: ensureS6Stream, touchReadyCount: 40, count: 120 },
+      s7: { getStream: ensureS8Stream, touchReadyCount: 36, count: 120 },
+      s9: { getStream: ensureS10Stream, touchReadyCount: 60, count: 120 },
+      s11: { getStream: ensureS13Stream, touchReadyCount: 60, count: 120 },
+      s14: { getStream: ensureS15Stream, touchReadyCount: 100, count: 160 },
+    };
+    const target = readinessMap[sceneKey];
+    if (!target) return null;
+    const stream = target.getStream();
+    if (!stream) return null;
+    if (useTouchReadiness && typeof stream.retainLoadedFrames === "function") {
+      stream.retainLoadedFrames();
+    }
+    const readyCount = useTouchReadiness
+      ? target.touchReadyCount
+      : Math.min(target.count, Math.ceil(target.count * 0.88));
+
+    return () => {
+      const now = performance.now();
+      stream.preloadRange(0, target.count);
+      stream.setTarget(0, now);
+      stream.processQueue(now, true);
+      const loaded = stream.countLoadedInRange(0, useTouchReadiness ? readyCount : target.count);
+      const ready = loaded >= readyCount;
+      lastSafariReadiness = `${sceneKey} ${loaded}/${readyCount} ready=${ready ? "yes" : "no"}`;
+      return ready;
+    };
   }
 
   function maybeShowProjectScene(sceneKey, direction = 1) {
@@ -2765,6 +3138,8 @@ function beginScrollJourney() {
     }, {
       scrollDismiss: !isReverse,
       holdDuration,
+      holdUntilReady: isReverse ? null : createProjectHoldReadiness(sceneKey),
+      maxHoldDuration: isReverse || viewportMode === "desktop" ? (isReverse ? holdDuration : 5200) : Number.POSITIVE_INFINITY,
       autoDismissAfter: 0,
       entranceDelay: 0,
       entranceDuration: firstTime ? 360 : 280,
@@ -3572,7 +3947,7 @@ function buildOverlayGlyphField() {
   const padding = 34;
   const targetCell = 42;
   const cols = Math.max(10, Math.floor((window.innerWidth - padding * 2) / (targetCell + gap)));
-  const rows = Math.max(8, Math.floor((window.innerHeight - padding * 2) / (targetCell + gap)));
+  const rows = Math.max(8, Math.floor((getAppViewportHeight() - padding * 2) / (targetCell + gap)));
   field.style.gridTemplateColumns = `repeat(${cols}, 1fr)`;
   field.style.gridTemplateRows = `repeat(${rows}, 1fr)`;
   for (let i = 0; i < cols * rows; i++) {
@@ -3626,7 +4001,7 @@ function initOverlayRipple() {
 
   function resize() {
     canvas.width = window.innerWidth;
-    canvas.height = window.innerHeight;
+    canvas.height = getAppViewportHeight();
     gl.viewport(0, 0, canvas.width, canvas.height);
   }
 
@@ -3698,6 +4073,8 @@ function showWorldOverlay(onDismiss, options = {}) {
   if (!overlay) return;
   const journey = options.scroller || document.getElementById("scrollJourney");
   const holdDuration = 1800;
+  const holdUntilReady = typeof options.holdUntilReady === "function" ? options.holdUntilReady : null;
+  const maxHoldDuration = options.maxHoldDuration ?? holdDuration;
 
   buildOverlayGlyphField();
 
@@ -3714,6 +4091,7 @@ function showWorldOverlay(onDismiss, options = {}) {
   let dismissed = false;
   let scrollDismissEnabled = false;
   let guardedDismissOnScroll = null;
+  let releaseTouchScrollHold = null;
   const blockScroll = (event) => {
     debugScrollHold("worldOverlay", event);
     event.preventDefault();
@@ -3728,6 +4106,10 @@ function showWorldOverlay(onDismiss, options = {}) {
   function dismiss() {
     if (dismissed) return;
     dismissed = true;
+    if (releaseTouchScrollHold) {
+      releaseTouchScrollHold();
+      releaseTouchScrollHold = null;
+    }
     if (journey) {
       journey.removeEventListener("wheel", blockScroll);
       journey.removeEventListener("touchmove", blockScroll);
@@ -3743,6 +4125,7 @@ function showWorldOverlay(onDismiss, options = {}) {
     if (guardedDismissOnScroll) {
       window.removeEventListener("wheel", guardedDismissOnScroll);
       window.removeEventListener("touchmove", guardedDismissOnScroll);
+      window.removeEventListener("scroll", guardedDismissOnScroll);
     }
     overlay.classList.remove("is-visible");
     overlay.classList.add("is-exiting");
@@ -3760,6 +4143,10 @@ function showWorldOverlay(onDismiss, options = {}) {
 
   const startScrollHold = () => {
     if (dismissed) return;
+    const startedAt = performance.now();
+    const minimumHoldUntil = startedAt + holdDuration;
+    const maxHoldUntil = startedAt + Math.max(holdDuration, maxHoldDuration);
+    releaseTouchScrollHold = pushTouchScrollHold();
     if (journey) {
       journey.addEventListener("wheel", blockScroll, { passive: false });
       journey.addEventListener("touchmove", blockScroll, { passive: false });
@@ -3767,8 +4154,20 @@ function showWorldOverlay(onDismiss, options = {}) {
     window.addEventListener("wheel", blockScroll, { passive: false });
     window.addEventListener("touchmove", blockScroll, { passive: false });
     window.addEventListener("keydown", blockKeyScroll);
-    window.setTimeout(() => {
+    const releaseWhenReady = () => {
       if (dismissed) return;
+      const now = performance.now();
+      const minimumElapsed = now >= minimumHoldUntil;
+      const ready = !holdUntilReady || holdUntilReady();
+      const timedOut = now >= maxHoldUntil;
+      if ((!minimumElapsed || !ready) && !timedOut) {
+        window.setTimeout(releaseWhenReady, 120);
+        return;
+      }
+      if (releaseTouchScrollHold) {
+        releaseTouchScrollHold();
+        releaseTouchScrollHold = null;
+      }
       scrollDismissEnabled = true;
       if (journey) {
         journey.removeEventListener("wheel", blockScroll);
@@ -3777,7 +4176,17 @@ function showWorldOverlay(onDismiss, options = {}) {
       window.removeEventListener("wheel", blockScroll);
       window.removeEventListener("touchmove", blockScroll);
       window.removeEventListener("keydown", blockKeyScroll);
-    }, holdDuration);
+      // Safari-specific: at this point window.scrollY is at body max (no more
+      // scroll range), so neither window "scroll" nor "wheel" events will fire
+      // if the user has stopped gesturing. Auto-dismiss after a short grace
+      // period so the transition isn't permanently stuck.
+      if (isMacSafari()) {
+        window.setTimeout(() => {
+          if (!dismissed) dismiss();
+        }, 800);
+      }
+    };
+    window.setTimeout(releaseWhenReady, 120);
   };
 
   if (journey) {
@@ -3787,6 +4196,10 @@ function showWorldOverlay(onDismiss, options = {}) {
   }
   window.addEventListener("wheel", guardedDismissOnScroll);
   window.addEventListener("touchmove", guardedDismissOnScroll);
+  // Safari: the scroll proxy drives dismiss via window scroll events (not wheel).
+  // Momentum scroll on Safari fires scroll events but not cancelable wheel events,
+  // so we also listen on window scroll to catch proxy-driven movement.
+  window.addEventListener("scroll", guardedDismissOnScroll, { passive: true });
   window.setTimeout(startScrollHold, 24);
 }
 
@@ -3795,6 +4208,8 @@ function showProjectPopover(sceneKey, onDismiss, options = {}) {
   const useMobileProjectPanel = isMobileProjectPanelMode();
   const scrollDismiss = options.scrollDismiss ?? false;
   const holdDuration = options.holdDuration ?? 0;
+  const holdUntilReady = typeof options.holdUntilReady === "function" ? options.holdUntilReady : null;
+  const maxHoldDuration = options.maxHoldDuration ?? holdDuration;
   const autoDismissAfter = options.autoDismissAfter ?? 0;
   const entranceDelay = options.entranceDelay ?? 24;
   const entranceDuration = options.entranceDuration ?? 700;
@@ -3814,6 +4229,8 @@ function showProjectPopover(sceneKey, onDismiss, options = {}) {
   let autoDismissTimeoutId = 0;
   let scrollDismissEnabled = !scrollDismiss;
   let guardedDismissOnScroll = null;
+  let guardedDismissOnPopoverTouch = null;
+  let releaseTouchScrollHold = null;
   const toggleMobilePanel = (event) => {
     if (!useMobileProjectPanel) return;
     event.stopPropagation();
@@ -3837,6 +4254,10 @@ function showProjectPopover(sceneKey, onDismiss, options = {}) {
   const dismiss = () => {
     if (dismissed) return;
     dismissed = true;
+    if (releaseTouchScrollHold) {
+      releaseTouchScrollHold();
+      releaseTouchScrollHold = null;
+    }
     if (autoDismissTimeoutId) {
       window.clearTimeout(autoDismissTimeoutId);
       autoDismissTimeoutId = 0;
@@ -3854,6 +4275,10 @@ function showProjectPopover(sceneKey, onDismiss, options = {}) {
     window.removeEventListener("wheel", blockScroll);
     window.removeEventListener("touchmove", blockScroll);
     window.removeEventListener("keydown", blockKeyScroll);
+    projectPopover.removeEventListener("touchmove", blockScroll, true);
+    if (guardedDismissOnPopoverTouch) {
+      projectPopover.removeEventListener("touchmove", guardedDismissOnPopoverTouch, true);
+    }
     if (guardedDismissOnScroll) {
       window.removeEventListener("wheel", guardedDismissOnScroll);
       window.removeEventListener("touchmove", guardedDismissOnScroll);
@@ -3879,12 +4304,16 @@ function showProjectPopover(sceneKey, onDismiss, options = {}) {
     const dismissOnScroll = () => dismiss();
     const startScrollHold = () => {
       if (dismissed) return;
-      if (holdDuration <= 0) {
+      const startedAt = performance.now();
+      const minimumHoldUntil = startedAt + holdDuration;
+      const maxHoldUntil = startedAt + Math.max(holdDuration, maxHoldDuration);
+      if (holdDuration <= 0 && !holdUntilReady) {
         window.setTimeout(() => {
           if (!dismissed) scrollDismissEnabled = true;
         }, 300);
         return;
       }
+      releaseTouchScrollHold = pushTouchScrollHold();
       if (journey) {
         journey.addEventListener("wheel", blockScroll, { passive: false });
         journey.addEventListener("touchmove", blockScroll, { passive: false });
@@ -3892,8 +4321,20 @@ function showProjectPopover(sceneKey, onDismiss, options = {}) {
       window.addEventListener("wheel", blockScroll, { passive: false });
       window.addEventListener("touchmove", blockScroll, { passive: false });
       window.addEventListener("keydown", blockKeyScroll);
-      window.setTimeout(() => {
+      const releaseWhenReady = () => {
         if (dismissed) return;
+        const now = performance.now();
+        const minimumElapsed = now >= minimumHoldUntil;
+        const ready = !holdUntilReady || holdUntilReady();
+        const timedOut = now >= maxHoldUntil;
+        if ((!minimumElapsed || !ready) && !timedOut) {
+          window.setTimeout(releaseWhenReady, 120);
+          return;
+        }
+        if (releaseTouchScrollHold) {
+          releaseTouchScrollHold();
+          releaseTouchScrollHold = null;
+        }
         scrollDismissEnabled = true;
         if (journey) {
           journey.removeEventListener("wheel", blockScroll);
@@ -3902,7 +4343,8 @@ function showProjectPopover(sceneKey, onDismiss, options = {}) {
         window.removeEventListener("wheel", blockScroll);
         window.removeEventListener("touchmove", blockScroll);
         window.removeEventListener("keydown", blockKeyScroll);
-      }, holdDuration);
+      };
+      window.setTimeout(releaseWhenReady, 120);
     };
     guardedDismissOnScroll = () => {
       if (!scrollDismissEnabled) return;
@@ -3915,11 +4357,19 @@ function showProjectPopover(sceneKey, onDismiss, options = {}) {
       window.removeEventListener("touchmove", guardedDismissOnScroll);
       dismissOnScroll();
     };
+    guardedDismissOnPopoverTouch = (event) => {
+      if (!scrollDismissEnabled) return;
+      if (useMobileProjectPanel && projectPopoverExpanded && projectPopoverBody?.contains(event.target)) {
+        return;
+      }
+      guardedDismissOnScroll();
+    };
     if (journey) {
       journey.addEventListener("scroll", guardedDismissOnScroll);
       journey.addEventListener("wheel", guardedDismissOnScroll);
       journey.addEventListener("touchmove", guardedDismissOnScroll);
     }
+    projectPopover.addEventListener("touchmove", guardedDismissOnPopoverTouch, { capture: true });
     window.addEventListener("wheel", guardedDismissOnScroll);
     window.addEventListener("touchmove", guardedDismissOnScroll);
     window.setTimeout(startScrollHold, (entranceDelay || 16) + 24);
@@ -3973,10 +4423,11 @@ function showProjectPopover(sceneKey, onDismiss, options = {}) {
         event.stopPropagation();
         playUiClick();
         const shouldOpenCaseStudy = Boolean(caseStudySrcByScene[sceneKey]);
+        const caseStudyHoldUntilReady = holdUntilReady;
         dismiss();
         if (shouldOpenCaseStudy) {
           window.setTimeout(() => {
-            openCaseStudyOverlay(sceneKey);
+            openCaseStudyOverlay(sceneKey, caseStudyHoldUntilReady);
           }, 520);
         }
       },
@@ -4177,10 +4628,11 @@ void main(){
   gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
 
   function resize() {
+    const appHeight = getAppViewportHeight();
     mistCanvas.width = Math.max(1, Math.floor(window.innerWidth * mistDprCap));
-    mistCanvas.height = Math.max(1, Math.floor(window.innerHeight * mistDprCap));
+    mistCanvas.height = Math.max(1, Math.floor(appHeight * mistDprCap));
     mistCanvas.style.width = `${window.innerWidth}px`;
-    mistCanvas.style.height = `${window.innerHeight}px`;
+    mistCanvas.style.height = `${appHeight}px`;
     gl.viewport(0, 0, mistCanvas.width, mistCanvas.height);
     gl.useProgram(prog);
     gl.uniform2f(uResolution, mistCanvas.width, mistCanvas.height);
@@ -4775,12 +5227,13 @@ function initFluidBackground() {
   let suppressionTarget = 0;
 
   function resize() {
+    const appHeight = getAppViewportHeight();
     const width = Math.max(1, Math.floor(window.innerWidth * dprCap));
-    const height = Math.max(1, Math.floor(window.innerHeight * dprCap));
+    const height = Math.max(1, Math.floor(appHeight * dprCap));
     fluidBgCanvas.width = width;
     fluidBgCanvas.height = height;
     fluidBgCanvas.style.width = `${window.innerWidth}px`;
-    fluidBgCanvas.style.height = `${window.innerHeight}px`;
+    fluidBgCanvas.style.height = `${appHeight}px`;
     gl.viewport(0, 0, width, height);
     gl.uniform2f(uResolution, width, height);
   }
