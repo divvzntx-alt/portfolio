@@ -920,16 +920,17 @@ body.is-opening-cta-visible:not(.is-sequence-started) .opening-sound-choice {
   height: 36px;
   border-radius: 50%;
   border: 1px solid rgba(205, 175, 98, 0.4);
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  display: grid;
+  place-items: center;
+  font-family: Arial, sans-serif;
   transition: border-color 0.2s, background 0.2s, transform 0.2s;
 }
 
 .journey-chrome__about-arrow {
   display: block;
   color: rgba(205, 175, 98, 0.8);
-  font-size: 16px;
+  font-family: Arial, sans-serif;
+  font-size: 17px;
   line-height: 1;
 }
 
@@ -2126,9 +2127,9 @@ body.is-tablet .scroll-prompt__wheel {
   height: 36px;
   border-radius: 50%;
   border: 1px solid rgba(205, 175, 98, 0.4);
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  display: grid;
+  place-items: center;
+  font-family: Arial, sans-serif;
   transition: border-color 0.2s, background 0.2s;
 }
 
@@ -2140,16 +2141,12 @@ body.is-tablet .scroll-prompt__wheel {
 .project-popover__cta-arrow {
   display: block;
   color: rgba(205, 175, 98, 0.8);
-  font-size: 16px;
+  font-family: Arial, sans-serif;
+  font-size: 17px;
   line-height: 1;
 }
 
 @-moz-document url-prefix() {
-  .journey-chrome__about-arrow,
-  .project-popover__cta-arrow {
-    transform: translateY(-1px);
-  }
-
   .journey-chrome__glyph-mark {
     transform: translateY(-0.04em);
   }
