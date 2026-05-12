@@ -1037,6 +1037,14 @@ function syncMacSafariProxyHeight() {
   document.body.style.minHeight = `${window.innerHeight + maxScrollTop}px`;
 }
 
+function syncMacSafariProxyScrollTop(scrollTop) {
+  if (!isMacSafari() || !macSafariScrollProxy?.scroller) return;
+  const scroller = macSafariScrollProxy.scroller;
+  const maxScrollTop = Math.max(0, scroller.scrollHeight - scroller.clientHeight);
+  const nextScrollTop = Math.max(0, Math.min(maxScrollTop, Math.round(scrollTop || 0)));
+  window.scrollTo(0, nextScrollTop);
+}
+
 function enableMacSafariScrollProxy(scroller, onScroll) {
   if (!isMacSafari() || !scroller) return;
   disableMacSafariScrollProxy(false);
@@ -3903,6 +3911,7 @@ function beginScrollJourney() {
 
       railJumpTime = performance.now();
       journey.scrollTop = target.scrollPos;
+      syncMacSafariProxyScrollTop(target.scrollPos);
       lastScrollTop = target.scrollPos;
       pendingRailReverseClearScene = target.sceneKey;
       activeThresholdTitleOwnerScene = target.sceneKey;
