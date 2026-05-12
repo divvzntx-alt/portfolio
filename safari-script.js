@@ -2878,13 +2878,12 @@ function beginScrollJourney() {
 
   function beginCeremonialTitle(sceneKey, content) {
     if (!content || !thresholdController || typeof thresholdController.runFlowTitle !== "function") return;
-    const hasOtherActiveTitle =
-      activeThresholdTitleOwnerScene &&
-      activeThresholdTitleOwnerScene !== sceneKey &&
+    if (typeof thresholdController.isRunning === "function" && thresholdController.isRunning()) return;
+    const hasActiveTitle =
       typeof thresholdController.hasActiveTitle === "function" &&
       thresholdController.hasActiveTitle();
 
-    if (hasOtherActiveTitle && typeof thresholdController.clearActiveTitle === "function") {
+    if (hasActiveTitle && typeof thresholdController.clearActiveTitle === "function") {
       thresholdController.clearActiveTitle();
     }
 
@@ -4789,6 +4788,10 @@ void main(){
     return Boolean(activeTitleOwner) && thresholdTransition.getAttribute("aria-hidden") !== "true";
   }
 
+  function isRunning() {
+    return running;
+  }
+
   function setActiveTitleOwner(sceneKey) {
     activeTitleOwner = sceneKey;
   }
@@ -5083,7 +5086,7 @@ void main(){
     }
   }
 
-  return { run, runSceneTitle, runFlowTitle, runMinimalTitle, showVeil, hideVeil, interrupt, isDocked, clearDockedTitle, clearActiveTitle, hasActiveTitle, setActiveTitleOwner };
+  return { run, runSceneTitle, runFlowTitle, runMinimalTitle, showVeil, hideVeil, interrupt, isDocked, clearDockedTitle, clearActiveTitle, hasActiveTitle, isRunning, setActiveTitleOwner };
 }
 
 function initFluidBackground() {
