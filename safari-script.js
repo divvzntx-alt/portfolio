@@ -2876,22 +2876,31 @@ function beginScrollJourney() {
     sceneTitleShown.add("s2");
   }
 
-  function maybeRunSceneTitle(sceneKey) {
-    const content = thresholdSceneContent[sceneKey];
-    if (!content || !thresholdController) return;
+  function beginCeremonialTitle(sceneKey, content) {
+    if (!content || !thresholdController || typeof thresholdController.runFlowTitle !== "function") return;
+    const hasOtherActiveTitle =
+      activeThresholdTitleOwnerScene &&
+      activeThresholdTitleOwnerScene !== sceneKey &&
+      typeof thresholdController.hasActiveTitle === "function" &&
+      thresholdController.hasActiveTitle();
+
+    if (hasOtherActiveTitle && typeof thresholdController.clearActiveTitle === "function") {
+      thresholdController.clearActiveTitle();
+    }
+
     reverseThresholdUnlocked.delete(sceneKey);
     activeThresholdTitleOwnerScene = sceneKey;
     if (typeof thresholdController.setActiveTitleOwner === "function") {
       thresholdController.setActiveTitleOwner(sceneKey);
     }
-    if (sceneKey === "s2") {
-      if (typeof thresholdController.runFlowTitle !== "function") return;
-      sceneTitleShown.add(sceneKey);
-      return thresholdController.runFlowTitle(content);
-    }
-    if (typeof thresholdController.runFlowTitle !== "function") return;
     sceneTitleShown.add(sceneKey);
     return thresholdController.runFlowTitle(content);
+  }
+
+  function maybeRunSceneTitle(sceneKey) {
+    const content = thresholdSceneContent[sceneKey];
+    if (!content || !thresholdController) return;
+    return beginCeremonialTitle(sceneKey, content);
   }
 
   function maybeRunReverseThreshold(sceneKey, scrollDirection) {
@@ -3929,9 +3938,7 @@ function beginScrollJourney() {
       }
 
       requestAnimationFrame(() => {
-        if (thresholdController && typeof thresholdController.runFlowTitle === "function") {
-          thresholdController.runFlowTitle(target.content);
-        }
+        beginCeremonialTitle(target.sceneKey, target.content);
       });
     });
   });
