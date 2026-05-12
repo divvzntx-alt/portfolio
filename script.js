@@ -2735,14 +2735,12 @@ function beginScrollJourney() {
     if (!target) return null;
     const stream = target.getStream();
     if (!stream) return null;
-    const readyCount = Math.min(target.count, Math.ceil(target.count * 0.88));
-
     return () => {
       const now = performance.now();
       stream.preloadRange(0, target.count);
       stream.setTarget(0, now);
       stream.processQueue(now, true);
-      return stream.countLoadedInRange(0, target.count) >= readyCount;
+      return stream.countLoadedInRange(0, target.count) >= target.count;
     };
   }
 
@@ -2800,7 +2798,7 @@ function beginScrollJourney() {
       scrollDismiss: !isReverse,
       holdDuration,
       holdUntilReady: isReverse ? null : createProjectHoldReadiness(sceneKey),
-      maxHoldDuration: isReverse ? holdDuration : 5200,
+      maxHoldDuration: isReverse ? holdDuration : 12000,
       autoDismissAfter: 0,
       entranceDelay: 0,
       entranceDuration: firstTime ? 360 : 280,

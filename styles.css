@@ -927,6 +927,7 @@ body.is-opening-cta-visible:not(.is-sequence-started) .opening-sound-choice {
 }
 
 .journey-chrome__about-arrow {
+  display: block;
   color: rgba(205, 175, 98, 0.8);
   font-size: 16px;
   line-height: 1;
@@ -1071,10 +1072,11 @@ body.is-sound-on .journey-mobile-menu__sound-state {
 }
 
 .journey-chrome__glyph-mark {
+  display: block;
   font-size: 24px;
   font-weight: 400;
   line-height: 1;
-  font-family: "EB Garamond", serif;
+  font-family: "Noto Sans Brahmi", "EB Garamond", serif;
 }
 
 .journey-chrome__glyph-label {
@@ -2136,9 +2138,21 @@ body.is-tablet .scroll-prompt__wheel {
 }
 
 .project-popover__cta-arrow {
+  display: block;
   color: rgba(205, 175, 98, 0.8);
   font-size: 16px;
   line-height: 1;
+}
+
+@-moz-document url-prefix() {
+  .journey-chrome__about-arrow,
+  .project-popover__cta-arrow {
+    transform: translateY(-1px);
+  }
+
+  .journey-chrome__glyph-mark {
+    transform: translateY(-0.04em);
+  }
 }
 
 .project-popover__cta-label {
