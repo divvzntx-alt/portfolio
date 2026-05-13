@@ -1699,11 +1699,12 @@ function startLoadingAnimation() {
     const contactLoaded = contactStreams.reduce((sum, { stream: contactStream, totalFrames }) => {
       return sum + contactStream.countLoadedInRange(0, totalFrames);
     }, 0);
-    const totalFramesToLoad = introTotalFrames + contactStreams.reduce((sum, { totalFrames }) => sum + totalFrames, 0);
-    const totalLoaded = introLoaded + contactLoaded;
+    const smokeProgress = fluidBgController?.getLoadingProgress?.() || { loaded: 0, total: 0, ready: true };
+    const totalFramesToLoad = introTotalFrames + contactStreams.reduce((sum, { totalFrames }) => sum + totalFrames, 0) + smokeProgress.total;
+    const totalLoaded = introLoaded + contactLoaded + smokeProgress.loaded;
     setProgress((totalLoaded / totalFramesToLoad) * 100);
 
-    const ready = totalLoaded >= totalFramesToLoad;
+    const ready = totalLoaded >= totalFramesToLoad && smokeProgress.ready;
     const pastMinimum = performance.now() >= minVisibleUntil;
 
     if (ready && pastMinimum) {
@@ -4531,6 +4532,13 @@ window.addEventListener("keydown", (event) => {
 updateViewportVars();
 buildGlyphField();
 buildAboutOverlayGlyphField();
+thresholdController = initThresholdTransition();
+fluidBgController = initFluidBackground();
+resizeIntroCanvas();
+const initialIntroStream = ensureIntroStream();
+if (initialIntroStream) {
+  initialIntroStream.prime(0);
+}
 startLoadingAnimation();
 
 function initThresholdTransition() {
@@ -5369,13 +5377,12 @@ function initFluidBackground() {
     setSuppressed(value) {
       suppressionTarget = value ? 1 : 0;
     },
+    getLoadingProgress() {
+      return {
+        loaded: Math.min(cachedFrames.length, cachedFrameCount),
+        total: cachedFrameCount,
+        ready: cacheReady,
+      };
+    },
   };
-}
-
-thresholdController = initThresholdTransition();
-fluidBgController = initFluidBackground();
-resizeIntroCanvas();
-const initialIntroStream = ensureIntroStream();
-if (initialIntroStream) {
-  initialIntroStream.prime(0);
 }
