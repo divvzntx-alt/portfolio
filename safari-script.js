@@ -5105,7 +5105,7 @@ function initFluidBackground() {
     return null;
   }
 
-  const dprCap = Math.min(window.devicePixelRatio || 1, 1.35);
+  const dprCap = Math.min(window.devicePixelRatio || 1, 0.9);
   const vertexShaderSource = `
     attribute vec2 a_pos;
     varying vec2 v_uv;
@@ -5145,7 +5145,7 @@ function initFluidBackground() {
     float fbm(vec2 p) {
       float v = 0.0;
       float a = 0.5;
-      for (int i = 0; i < 5; i++) {
+      for (int i = 0; i < 3; i++) {
         v += a * noise(p);
         p = rot(0.37) * p * 2.0 + vec2(1.7, 9.2);
         a *= 0.5;
