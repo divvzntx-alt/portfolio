@@ -5094,10 +5094,18 @@ function initFluidBackground() {
     return null;
   }
 
-  const gl = fluidBgCanvas.getContext("webgl", {
+  const drawCtx = fluidBgCanvas.getContext("2d", { alpha: true });
+  if (!drawCtx) {
+    fluidBgCanvas.style.display = "none";
+    return null;
+  }
+
+  const renderCanvas = document.createElement("canvas");
+  const gl = renderCanvas.getContext("webgl", {
     alpha: true,
     antialias: false,
     premultipliedAlpha: false,
+    preserveDrawingBuffer: true,
   });
 
   if (!gl) {
@@ -5105,7 +5113,9 @@ function initFluidBackground() {
     return null;
   }
 
-  const dprCap = Math.min(window.devicePixelRatio || 1, 0.9);
+  const dprCap = Math.min(window.devicePixelRatio || 1, 0.62);
+  const cachedFrameCount = 48;
+  const cachedLoopDuration = 8;
   const vertexShaderSource = `
     attribute vec2 a_pos;
     varying vec2 v_uv;
@@ -5205,6 +5215,7 @@ function initFluidBackground() {
     }
   `;
 
+
   function compile(type, source) {
     const shader = gl.createShader(type);
     gl.shaderSource(shader, source);
@@ -5240,17 +5251,94 @@ function initFluidBackground() {
   let targetCoolAmount = idleCoolAmount;
   let suppression = 0;
   let suppressionTarget = 0;
+  let frameId = 0;
+  let buildId = 0;
+  let cachedFrames = [];
+  let cachedFrameIndex = 0;
+  let cacheReady = false;
+  let displayWidth = 1;
+  let displayHeight = 1;
+  let renderWidth = 1;
+  let renderHeight = 1;
+  let lastPlaybackFrame = -1;
+
+  function sizeCanvases() {
+    const appHeight = getAppViewportHeight();
+    displayWidth = Math.max(1, Math.floor(window.innerWidth));
+    displayHeight = Math.max(1, Math.floor(appHeight));
+    renderWidth = Math.max(1, Math.floor(displayWidth * dprCap));
+    renderHeight = Math.max(1, Math.floor(displayHeight * dprCap));
+    fluidBgCanvas.width = renderWidth;
+    fluidBgCanvas.height = renderHeight;
+    fluidBgCanvas.style.width = `${displayWidth}px`;
+    fluidBgCanvas.style.height = `${displayHeight}px`;
+    renderCanvas.width = renderWidth;
+    renderCanvas.height = renderHeight;
+    gl.viewport(0, 0, renderWidth, renderHeight);
+    gl.uniform2f(uResolution, renderWidth, renderHeight);
+  }
+
+  function renderShaderFrame(timeSeconds, coolValue) {
+    gl.clear(gl.COLOR_BUFFER_BIT);
+    gl.uniform1f(uTime, timeSeconds);
+    gl.uniform1f(uCoolAmt, coolValue);
+    gl.drawArrays(gl.TRIANGLES, 0, 6);
+  }
+
+  function copyRenderToFrame() {
+    const frame = document.createElement("canvas");
+    frame.width = renderWidth;
+    frame.height = renderHeight;
+    const frameCtx = frame.getContext("2d", { alpha: true });
+    if (!frameCtx) return null;
+    frameCtx.drawImage(renderCanvas, 0, 0, renderWidth, renderHeight);
+    return frame;
+  }
+
+  function drawCachedFrame(now) {
+    const frames = cachedFrames.length ? cachedFrames : null;
+    if (!frames) return;
+    const fluidOpacity = Number.parseFloat(window.getComputedStyle(fluidBgCanvas).opacity || "0");
+    if (fluidOpacity <= 0.01 || suppression > 0.99) return;
+    const loopProgress = ((now * 0.001) % cachedLoopDuration) / cachedLoopDuration;
+    const frameIndex = Math.floor(loopProgress * frames.length) % frames.length;
+    if (frameIndex === lastPlaybackFrame && cacheReady) return;
+    lastPlaybackFrame = frameIndex;
+    drawCtx.clearRect(0, 0, renderWidth, renderHeight);
+    drawCtx.globalAlpha = Math.max(0, Math.min(1, 1 - suppression));
+    drawCtx.drawImage(frames[frameIndex], 0, 0, renderWidth, renderHeight);
+    drawCtx.globalAlpha = 1;
+  }
+
+  function buildFrameCache() {
+    const currentBuild = ++buildId;
+    cachedFrames = [];
+    cachedFrameIndex = 0;
+    cacheReady = false;
+    lastPlaybackFrame = -1;
+
+    function buildNext() {
+      if (currentBuild !== buildId || document.visibilityState === "hidden") return;
+      const timeSeconds = (cachedFrameIndex / cachedFrameCount) * cachedLoopDuration;
+      renderShaderFrame(timeSeconds, idleCoolAmount);
+      const frame = copyRenderToFrame();
+      if (frame) {
+        cachedFrames.push(frame);
+      }
+      cachedFrameIndex += 1;
+      if (cachedFrameIndex < cachedFrameCount) {
+        window.requestAnimationFrame(buildNext);
+      } else {
+        cacheReady = true;
+      }
+    }
+
+    window.requestAnimationFrame(buildNext);
+  }
 
   function resize() {
-    const appHeight = getAppViewportHeight();
-    const width = Math.max(1, Math.floor(window.innerWidth * dprCap));
-    const height = Math.max(1, Math.floor(appHeight * dprCap));
-    fluidBgCanvas.width = width;
-    fluidBgCanvas.height = height;
-    fluidBgCanvas.style.width = `${window.innerWidth}px`;
-    fluidBgCanvas.style.height = `${appHeight}px`;
-    gl.viewport(0, 0, width, height);
-    gl.uniform2f(uResolution, width, height);
+    sizeCanvases();
+    buildFrameCache();
   }
 
   resize();
@@ -5259,31 +5347,14 @@ function initFluidBackground() {
   gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
   gl.clearColor(0, 0, 0, 0);
 
-  let frameId = 0;
-  let lastSmokeDraw = 0;
-  const smokeFrameInterval = 1000 / 30;
-
   function render(now) {
     if (document.visibilityState === "hidden") {
       frameId = window.requestAnimationFrame(render);
       return;
     }
-    const fluidOpacity = Number.parseFloat(window.getComputedStyle(fluidBgCanvas).opacity || "0");
     suppression += (suppressionTarget - suppression) * 0.1;
     coolAmount += (targetCoolAmount - coolAmount) * 0.06;
-    if (fluidOpacity <= 0.01 || suppression > 0.99) {
-      frameId = window.requestAnimationFrame(render);
-      return;
-    }
-    if (now - lastSmokeDraw < smokeFrameInterval) {
-      frameId = window.requestAnimationFrame(render);
-      return;
-    }
-    lastSmokeDraw = now;
-    gl.clear(gl.COLOR_BUFFER_BIT);
-    gl.uniform1f(uTime, now * 0.001);
-    gl.uniform1f(uCoolAmt, coolAmount * (1 - suppression));
-    gl.drawArrays(gl.TRIANGLES, 0, 6);
+    drawCachedFrame(now);
     frameId = window.requestAnimationFrame(render);
   }
 
@@ -5291,7 +5362,9 @@ function initFluidBackground() {
 
   return {
     destroy() {
+      buildId += 1;
       window.cancelAnimationFrame(frameId);
+      window.removeEventListener("resize", resize);
     },
     setSuppressed(value) {
       suppressionTarget = value ? 1 : 0;
