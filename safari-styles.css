@@ -521,10 +521,10 @@ body:not(.is-sequence-started) .intro-line {
   line-height: 1.12;
   letter-spacing: 0;
   color: #e8dfc8;
-  clip-path: inset(0 100% 0 0);
+  clip-path: none;
   opacity: 0;
   transform: translateY(26px) scale(0.985);
-  filter: blur(8px);
+  filter: none;
 }
 
 body:not(.is-sequence-started) .intro-line--accent {
@@ -532,18 +532,16 @@ body:not(.is-sequence-started) .intro-line--accent {
 }
 
 body.is-opening-visible:not(.is-sequence-started) .intro-line.is-visible {
-  clip-path: inset(0 0 0 0);
+  clip-path: none;
   opacity: 1;
   transform: translateY(0) scale(1);
-  filter: blur(0);
+  filter: none;
 }
 
 body.is-opening-visible:not(.is-sequence-started) .intro-line {
   transition:
-    clip-path 3200ms cubic-bezier(0.18, 0.88, 0.16, 1),
-    opacity 1500ms ease,
-    transform 3200ms cubic-bezier(0.18, 0.88, 0.16, 1),
-    filter 2800ms ease;
+    opacity 1400ms ease,
+    transform 2600ms cubic-bezier(0.18, 0.88, 0.16, 1);
 }
 
 body.is-opening-cta-visible:not(.is-sequence-started) .opening-sound-choice {
@@ -2937,10 +2935,8 @@ body.is-text-exiting .opening-sound-choice {
 
 body.is-text-exiting .intro-line {
   transition:
-    clip-path 1500ms cubic-bezier(0.72, 0, 0.8, 0.96),
     opacity 1000ms ease,
-    transform 1500ms ease,
-    filter 1300ms ease;
+    transform 1500ms ease;
 }
 
 body.is-smoke-intense .intro-overlay {
