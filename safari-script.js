@@ -5094,6 +5094,13 @@ function initFluidBackground() {
     return null;
   }
 
+  document.body.classList.add("is-opening-webgl-disabled");
+  fluidBgCanvas.style.display = "none";
+  return {
+    destroy() {},
+    setSuppressed() {},
+  };
+
   const gl = fluidBgCanvas.getContext("webgl", {
     alpha: true,
     antialias: false,

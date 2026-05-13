@@ -23,7 +23,7 @@
           isSafari && (/Mac/i.test(platform) || (typeof window.safari !== "undefined" && !/Mobile/i.test(ua)))
         );
         var href = window.__USE_MAC_SAFARI_BUNDLE__
-          ? "./safari-styles.css?v=safari-opening-text-1"
+          ? "./safari-styles.css?v=safari-opening-webgl-off-1"
           : "./styles.css?v=frame-cdn-config-firefox-rail-2";
         document.write('<link rel="stylesheet" href="' + href + '" />');
       })();
@@ -505,7 +505,7 @@
     <script>
       (function () {
         var src = window.__USE_MAC_SAFARI_BUNDLE__
-          ? "./safari-script.js?v=safari-opening-smoke-1"
+          ? "./safari-script.js?v=safari-opening-webgl-off-1"
           : "./script.js?v=frame-cdn-config-title-owner-3";
         document.write('<script src="' + src + '"><\/script>');
       })();
