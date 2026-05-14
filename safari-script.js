@@ -5106,7 +5106,7 @@ function initFluidBackground() {
 
   const smokeVideo = document.createElement("video");
   smokeVideo.className = "fluid-bg-canvas safari-opening-smoke-video";
-  smokeVideo.src = "assets/generated/safari-opening-smoke.mp4?v=safari-smoke-video-1";
+  smokeVideo.src = "assets/generated/safari-opening-smoke.mp4?v=safari-smoke-video-2";
   smokeVideo.muted = true;
   smokeVideo.loop = true;
   smokeVideo.autoplay = true;
