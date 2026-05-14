@@ -243,6 +243,10 @@ body.is-opening-webgl-disabled .night-world::after {
     );
 }
 
+.safari-opening-smoke-video {
+  object-fit: cover;
+}
+
 .fluid-bg-canvas {
   position: fixed;
   inset: 0;

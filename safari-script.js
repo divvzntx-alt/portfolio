@@ -5102,286 +5102,57 @@ function initFluidBackground() {
     return null;
   }
 
-  const drawCtx = fluidBgCanvas.getContext("2d", { alpha: true });
-  if (!drawCtx) {
-    fluidBgCanvas.style.display = "none";
-    return null;
-  }
+  fluidBgCanvas.style.display = "none";
 
-  const renderCanvas = document.createElement("canvas");
-  const gl = renderCanvas.getContext("webgl", {
-    alpha: true,
-    antialias: false,
-    premultipliedAlpha: false,
-    preserveDrawingBuffer: true,
-  });
+  const smokeVideo = document.createElement("video");
+  smokeVideo.className = "fluid-bg-canvas safari-opening-smoke-video";
+  smokeVideo.src = "assets/generated/safari-opening-smoke.mp4?v=safari-smoke-video-1";
+  smokeVideo.muted = true;
+  smokeVideo.loop = true;
+  smokeVideo.autoplay = true;
+  smokeVideo.playsInline = true;
+  smokeVideo.preload = "auto";
+  smokeVideo.setAttribute("aria-hidden", "true");
+  smokeVideo.style.objectFit = "cover";
+  smokeVideo.style.display = "block";
+  smokeVideo.style.width = "100%";
+  smokeVideo.style.height = "100%";
+  fluidBgCanvas.insertAdjacentElement("afterend", smokeVideo);
 
-  if (!gl) {
-    fluidBgCanvas.style.display = "none";
-    return null;
-  }
+  let videoReady = smokeVideo.readyState >= 3;
+  let videoFailed = false;
 
-  const dprCap = Math.min(window.devicePixelRatio || 1, 0.62);
-  const cachedFrameCount = 48;
-  const cachedLoopDuration = 8;
-  const vertexShaderSource = `
-    attribute vec2 a_pos;
-    varying vec2 v_uv;
-    void main() {
-      gl_Position = vec4(a_pos, 0.0, 1.0);
-      v_uv = a_pos * 0.5 + 0.5;
-    }
-  `;
+  const markReady = () => {
+    videoReady = true;
+    smokeVideo.play().catch(() => {});
+  };
+  const markFailed = () => {
+    videoFailed = true;
+  };
 
-  const fragmentShaderSource = `
-    precision highp float;
-    varying vec2 v_uv;
-    uniform float u_time;
-    uniform float u_coolAmt;
-    uniform vec2 u_resolution;
-
-    mat2 rot(float a) {
-      float s = sin(a), c = cos(a);
-      return mat2(c, -s, s, c);
-    }
-
-    float hash(vec2 p) {
-      return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
-    }
-
-    float noise(vec2 p) {
-      vec2 i = floor(p);
-      vec2 f = fract(p);
-      f = f * f * (3.0 - 2.0 * f);
-      float a = hash(i);
-      float b = hash(i + vec2(1.0, 0.0));
-      float c = hash(i + vec2(0.0, 1.0));
-      float d = hash(i + vec2(1.0, 1.0));
-      return mix(mix(a, b, f.x), mix(c, d, f.x), f.y);
-    }
-
-    float fbm(vec2 p) {
-      float v = 0.0;
-      float a = 0.5;
-      for (int i = 0; i < 5; i++) {
-        v += a * noise(p);
-        p = rot(0.37) * p * 2.0 + vec2(1.7, 9.2);
-        a *= 0.5;
-      }
-      return v;
-    }
-
-    float swirl(vec2 uv, float t) {
-      vec2 q = vec2(
-        fbm(uv + vec2(0.0, 0.0) + t * 0.12),
-        fbm(uv + vec2(5.2, 1.3) - t * 0.1)
-      );
-      vec2 r = vec2(
-        fbm(uv + 4.0 * q + vec2(1.7, 9.2) + t * 0.08),
-        fbm(uv + 4.0 * q + vec2(8.3, 2.8) - t * 0.06)
-      );
-      return fbm(uv + 3.5 * r);
-    }
-
-    void main() {
-      vec2 uv = v_uv;
-      if (u_resolution.y > u_resolution.x) {
-        uv.y = (uv.y - 0.5) * (u_resolution.y / u_resolution.x) + 0.5;
-      }
-      float t = u_time * 0.18;
-
-      float idleSwirl = swirl(uv * 2.0, t * 0.5);
-      float idleAmt = 0.07;
-
-      float activeSwirl = swirl(uv * 2.5 + vec2(t * 0.15), t);
-      float activeSwirl2 = swirl(uv * 1.8 - vec2(t * 0.1, t * 0.08), t * 0.7);
-
-      vec3 base = vec3(0.18, 0.28, 0.42);
-      vec3 color = base + (idleSwirl - 0.5) * 0.055;
-
-      vec3 coolA = vec3(0.72, 0.88, 1.0);
-      vec3 coolB = vec3(0.52, 0.74, 0.96);
-      vec3 coolC = vec3(0.84, 0.94, 1.0);
-      vec3 coolCol = mix(coolA, coolB, activeSwirl);
-      coolCol = mix(coolCol, coolC, activeSwirl2 * 0.5);
-
-      float fullMask = smoothstep(0.15, 0.85, activeSwirl);
-      float shadowMask = smoothstep(0.05, 0.95, activeSwirl2);
-      vec3 shadowCol = vec3(0.035, 0.055, 0.09);
-      color = mix(color, shadowCol, shadowMask * (0.08 + u_coolAmt * 0.16));
-
-      float intensity = 0.84;
-      color = mix(color, coolCol, fullMask * (0.28 + u_coolAmt * 0.66) * intensity);
-
-      float edge = abs(activeSwirl - 0.5) * 2.0;
-      vec3 edgeTint = vec3(0.62, 0.72, 0.82);
-      float edgeGlow = smoothstep(0.68, 1.0, edge) * (0.18 + u_coolAmt * 0.42) * 0.11;
-      color += edgeTint * edgeGlow;
-
-      float alpha = 0.92 + u_coolAmt * 0.35 + fullMask * 0.35;
-      gl_FragColor = vec4(color, clamp(alpha, 0.0, 1.0));
-    }
-  `;
-
-
-  function compile(type, source) {
-    const shader = gl.createShader(type);
-    gl.shaderSource(shader, source);
-    gl.compileShader(shader);
-    return shader;
-  }
-
-  const program = gl.createProgram();
-  gl.attachShader(program, compile(gl.VERTEX_SHADER, vertexShaderSource));
-  gl.attachShader(program, compile(gl.FRAGMENT_SHADER, fragmentShaderSource));
-  gl.linkProgram(program);
-  gl.useProgram(program);
-
-  const buffer = gl.createBuffer();
-  gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
-  gl.bufferData(
-    gl.ARRAY_BUFFER,
-    new Float32Array([-1, -1, 1, -1, -1, 1, 1, -1, 1, 1, -1, 1]),
-    gl.STATIC_DRAW
-  );
-
-  const aPosition = gl.getAttribLocation(program, "a_position");
-  const fallbackPosition = gl.getAttribLocation(program, "a_pos");
-  const positionLocation = aPosition === -1 ? fallbackPosition : aPosition;
-  gl.enableVertexAttribArray(positionLocation);
-  gl.vertexAttribPointer(positionLocation, 2, gl.FLOAT, false, 0, 0);
-
-  const uTime = gl.getUniformLocation(program, "u_time");
-  const uCoolAmt = gl.getUniformLocation(program, "u_coolAmt");
-  const uResolution = gl.getUniformLocation(program, "u_resolution");
-  const idleCoolAmount = 1.0;
-  let coolAmount = idleCoolAmount;
-  let targetCoolAmount = idleCoolAmount;
-  let suppression = 0;
-  let suppressionTarget = 0;
-  let frameId = 0;
-  let buildId = 0;
-  let cachedFrames = [];
-  let cachedFrameIndex = 0;
-  let cacheReady = false;
-  let displayWidth = 1;
-  let displayHeight = 1;
-  let renderWidth = 1;
-  let renderHeight = 1;
-  let lastPlaybackFrame = -1;
-
-  function sizeCanvases() {
-    const appHeight = getAppViewportHeight();
-    displayWidth = Math.max(1, Math.floor(window.innerWidth));
-    displayHeight = Math.max(1, Math.floor(appHeight));
-    renderWidth = Math.max(1, Math.floor(displayWidth * dprCap));
-    renderHeight = Math.max(1, Math.floor(displayHeight * dprCap));
-    fluidBgCanvas.width = renderWidth;
-    fluidBgCanvas.height = renderHeight;
-    fluidBgCanvas.style.width = `${displayWidth}px`;
-    fluidBgCanvas.style.height = `${displayHeight}px`;
-    renderCanvas.width = renderWidth;
-    renderCanvas.height = renderHeight;
-    gl.viewport(0, 0, renderWidth, renderHeight);
-    gl.uniform2f(uResolution, renderWidth, renderHeight);
-  }
-
-  function renderShaderFrame(timeSeconds, coolValue) {
-    gl.clear(gl.COLOR_BUFFER_BIT);
-    gl.uniform1f(uTime, timeSeconds);
-    gl.uniform1f(uCoolAmt, coolValue);
-    gl.drawArrays(gl.TRIANGLES, 0, 6);
-  }
-
-  function copyRenderToFrame() {
-    const frame = document.createElement("canvas");
-    frame.width = renderWidth;
-    frame.height = renderHeight;
-    const frameCtx = frame.getContext("2d", { alpha: true });
-    if (!frameCtx) return null;
-    frameCtx.drawImage(renderCanvas, 0, 0, renderWidth, renderHeight);
-    return frame;
-  }
-
-  function drawCachedFrame(now) {
-    const frames = cachedFrames.length ? cachedFrames : null;
-    if (!frames) return;
-    const fluidOpacity = Number.parseFloat(window.getComputedStyle(fluidBgCanvas).opacity || "0");
-    if (fluidOpacity <= 0.01 || suppression > 0.99) return;
-    const loopProgress = ((now * 0.001) % cachedLoopDuration) / cachedLoopDuration;
-    const frameIndex = Math.floor(loopProgress * frames.length) % frames.length;
-    if (frameIndex === lastPlaybackFrame && cacheReady) return;
-    lastPlaybackFrame = frameIndex;
-    drawCtx.clearRect(0, 0, renderWidth, renderHeight);
-    drawCtx.globalAlpha = Math.max(0, Math.min(1, 1 - suppression));
-    drawCtx.drawImage(frames[frameIndex], 0, 0, renderWidth, renderHeight);
-    drawCtx.globalAlpha = 1;
-  }
-
-  function buildFrameCache() {
-    const currentBuild = ++buildId;
-    cachedFrames = [];
-    cachedFrameIndex = 0;
-    cacheReady = false;
-    lastPlaybackFrame = -1;
-
-    function buildNext() {
-      if (currentBuild !== buildId || document.visibilityState === "hidden") return;
-      const timeSeconds = (cachedFrameIndex / cachedFrameCount) * cachedLoopDuration;
-      renderShaderFrame(timeSeconds, idleCoolAmount);
-      const frame = copyRenderToFrame();
-      if (frame) {
-        cachedFrames.push(frame);
-      }
-      cachedFrameIndex += 1;
-      if (cachedFrameIndex < cachedFrameCount) {
-        window.requestAnimationFrame(buildNext);
-      } else {
-        cacheReady = true;
-      }
-    }
-
-    window.requestAnimationFrame(buildNext);
-  }
-
-  function resize() {
-    sizeCanvases();
-    buildFrameCache();
-  }
-
-  resize();
-  window.addEventListener("resize", resize);
-  gl.enable(gl.BLEND);
-  gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
-  gl.clearColor(0, 0, 0, 0);
-
-  function render(now) {
-    if (document.visibilityState === "hidden") {
-      frameId = window.requestAnimationFrame(render);
-      return;
-    }
-    suppression += (suppressionTarget - suppression) * 0.1;
-    coolAmount += (targetCoolAmount - coolAmount) * 0.06;
-    drawCachedFrame(now);
-    frameId = window.requestAnimationFrame(render);
-  }
-
-  frameId = window.requestAnimationFrame(render);
+  smokeVideo.addEventListener("loadeddata", markReady, { once: true });
+  smokeVideo.addEventListener("canplay", markReady, { once: true });
+  smokeVideo.addEventListener("error", markFailed, { once: true });
+  smokeVideo.load();
+  smokeVideo.play().catch(() => {});
 
   return {
     destroy() {
-      buildId += 1;
-      window.cancelAnimationFrame(frameId);
-      window.removeEventListener("resize", resize);
+      smokeVideo.pause();
+      smokeVideo.removeEventListener("loadeddata", markReady);
+      smokeVideo.removeEventListener("canplay", markReady);
+      smokeVideo.removeEventListener("error", markFailed);
+      smokeVideo.remove();
     },
     setSuppressed(value) {
-      suppressionTarget = value ? 1 : 0;
+      smokeVideo.style.opacity = value ? "0" : "";
     },
     getLoadingProgress() {
+      const ready = videoReady || videoFailed || smokeVideo.readyState >= 3;
       return {
-        loaded: Math.min(cachedFrames.length, cachedFrameCount),
-        total: cachedFrameCount,
-        ready: cacheReady,
+        loaded: ready ? 1 : 0,
+        total: 1,
+        ready,
       };
     },
   };
