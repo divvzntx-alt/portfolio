@@ -116,14 +116,24 @@ let lastIntroDebugLog = 0;
 let lastSafariWheelBridge = "none";
 let lastSafariReadiness = "none";
 let touchScrollHoldDepth = 0;
+let macSafariHeldProxyScrollTop = null;
+let macSafariHeldWindowScrollY = null;
 
-function pushTouchScrollHold() {
+function pushTouchScrollHold(scroller = macSafariScrollProxy?.scroller || null) {
   let released = false;
   touchScrollHoldDepth += 1;
+  if (isMacSafari() && scroller && macSafariHeldProxyScrollTop === null) {
+    macSafariHeldProxyScrollTop = scroller.scrollTop || 0;
+    macSafariHeldWindowScrollY = window.scrollY || window.pageYOffset || 0;
+  }
   return () => {
     if (released) return;
     released = true;
     touchScrollHoldDepth = Math.max(0, touchScrollHoldDepth - 1);
+    if (touchScrollHoldDepth === 0) {
+      macSafariHeldProxyScrollTop = null;
+      macSafariHeldWindowScrollY = null;
+    }
   };
 }
 
@@ -1050,6 +1060,16 @@ function enableMacSafariScrollProxy(scroller, onScroll) {
   disableMacSafariScrollProxy(false);
   const handleScroll = () => {
     if (!macSafariScrollProxy?.scroller) return;
+    if (touchScrollHoldDepth > 0 && macSafariHeldProxyScrollTop !== null) {
+      const heldScrollTop = macSafariHeldProxyScrollTop;
+      const heldWindowScrollY = macSafariHeldWindowScrollY ?? heldScrollTop;
+      macSafariScrollProxy.scroller.scrollTop = heldScrollTop;
+      if (Math.abs((window.scrollY || window.pageYOffset || 0) - heldWindowScrollY) > 0.5) {
+        window.scrollTo(0, heldWindowScrollY);
+      }
+      lastSafariWheelBridge = `proxy held scroll=${Math.round(heldScrollTop)}`;
+      return;
+    }
     const maxScrollTop = Math.max(
       0,
       macSafariScrollProxy.scroller.scrollHeight - macSafariScrollProxy.scroller.clientHeight
@@ -4158,7 +4178,7 @@ function showWorldOverlay(onDismiss, options = {}) {
     const startedAt = performance.now();
     const minimumHoldUntil = startedAt + holdDuration;
     const maxHoldUntil = startedAt + Math.max(holdDuration, maxHoldDuration);
-    releaseTouchScrollHold = pushTouchScrollHold();
+    releaseTouchScrollHold = pushTouchScrollHold(journey);
     if (journey) {
       journey.addEventListener("wheel", blockScroll, { passive: false });
       journey.addEventListener("touchmove", blockScroll, { passive: false });
@@ -4325,7 +4345,7 @@ function showProjectPopover(sceneKey, onDismiss, options = {}) {
         }, 300);
         return;
       }
-      releaseTouchScrollHold = pushTouchScrollHold();
+      releaseTouchScrollHold = pushTouchScrollHold(journey);
       if (journey) {
         journey.addEventListener("wheel", blockScroll, { passive: false });
         journey.addEventListener("touchmove", blockScroll, { passive: false });
